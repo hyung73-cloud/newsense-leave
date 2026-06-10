@@ -8,12 +8,17 @@ import type { Employee, LeaveRequest } from './types';
 
 type AdminTab = 'balance' | 'calendar' | 'approve';
 
+const ADMIN_PASSWORD = '0876';
+
 export default function App() {
   const initial = useMemo(() => store.load(), []);
   const [employees, setEmployees] = useState<Employee[]>(initial.employees);
   const [requests, setRequests] = useState<LeaveRequest[]>(initial.requests);
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminTab, setAdminTab] = useState<AdminTab>('balance');
+  const [showPwModal, setShowPwModal] = useState(false);
+  const [pwInput, setPwInput] = useState('');
+  const [pwError, setPwError] = useState(false);
 
   const persist = useCallback(
     (e: Employee[], r: LeaveRequest[]) => store.save({ employees: e, requests: r }),
@@ -41,6 +46,23 @@ export default function App() {
   const actives = employees.filter((e) => e.isActive);
   const pendingCount = requests.filter((r) => r.status === 'requested').length;
 
+  const openAdmin = () => {
+    setPwInput('');
+    setPwError(false);
+    setShowPwModal(true);
+  };
+
+  const submitPw = () => {
+    if (pwInput === ADMIN_PASSWORD) {
+      setIsAdmin(true);
+      setShowPwModal(false);
+      setPwInput('');
+      setPwError(false);
+    } else {
+      setPwError(true);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800">
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white">
@@ -64,7 +86,7 @@ export default function App() {
             </button>
             <button
               type="button"
-              onClick={() => setIsAdmin(true)}
+              onClick={() => !isAdmin && openAdmin()}
               className={`rounded-md px-3 py-1.5 font-medium ${isAdmin ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
             >
               관리자
@@ -126,6 +148,52 @@ export default function App() {
           브라우저에 저장됩니다
         </footer>
       </main>
+
+      {showPwModal && (
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center px-4"
+          style={{ backgroundColor: 'rgba(15,23,42,0.45)' }}
+          onClick={() => setShowPwModal(false)}
+        >
+          <div
+            className="w-full max-w-xs rounded-2xl bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-base font-bold text-slate-800">관리자 비밀번호</h2>
+            <p className="mt-1 text-xs text-slate-500">관리자 화면에 접근하려면 비밀번호를 입력하세요.</p>
+            <input
+              type="password"
+              inputMode="numeric"
+              value={pwInput}
+              onChange={(e) => {
+                setPwInput(e.target.value);
+                setPwError(false);
+              }}
+              onKeyDown={(e) => e.key === 'Enter' && submitPw()}
+              placeholder="비밀번호"
+              className={`mt-3 w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none ${pwError ? 'border-rose-400 focus:border-rose-500' : 'border-slate-300 focus:border-slate-500'}`}
+              autoFocus
+            />
+            {pwError && <p className="mt-1.5 text-xs text-rose-500">비밀번호가 올바르지 않습니다.</p>}
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPwModal(false)}
+                className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm text-slate-500 hover:bg-slate-50"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={submitPw}
+                className="flex-1 rounded-xl bg-slate-800 py-2.5 text-sm font-medium text-white hover:bg-slate-900"
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
