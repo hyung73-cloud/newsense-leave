@@ -47,7 +47,7 @@ export const REQ_STATUS: Record<RequestStatus, { label: string; cls: string }> =
 
 export const ACTIVE_STATUSES: RequestStatus[] = ['requested', 'approved', 'revise'];
 
-export const ROLE_OPTIONS = ['접수', '간호', '상담', '시술보조', '기타'];
+export const ROLE_OPTIONS = ['직원', '접수', '간호', '상담', '시술보조', '기타'];
 
 export function usedUnits(
   empId: string,

@@ -39,6 +39,14 @@ export default function App() {
       return next;
     });
 
+  const deleteEmployee = (id: string) => {
+    const nextEmp = employees.filter((e) => e.id !== id);
+    const nextReq = requests.filter((r) => r.employeeId !== id);
+    setEmployees(nextEmp);
+    setRequests(nextReq);
+    persist(nextEmp, nextReq);
+  };
+
   const empById = useMemo(
     () => Object.fromEntries(employees.map((e) => [e.id, e])),
     [employees],
@@ -128,6 +136,7 @@ export default function App() {
                 employees={employees}
                 requests={requests}
                 updateEmployees={updateEmployees}
+                onDeleteEmployee={deleteEmployee}
               />
             )}
             {adminTab === 'calendar' && (

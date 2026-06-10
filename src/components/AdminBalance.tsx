@@ -7,28 +7,35 @@ interface AdminBalanceProps {
   employees: Employee[];
   requests: LeaveRequest[];
   updateEmployees: (fn: (prev: Employee[]) => Employee[]) => void;
+  onDeleteEmployee: (id: string) => void;
 }
 
-export function AdminBalance({ employees, requests, updateEmployees }: AdminBalanceProps) {
+export function AdminBalance({
+  employees,
+  requests,
+  updateEmployees,
+  onDeleteEmployee,
+}: AdminBalanceProps) {
   const [name, setName] = useState('');
-  const [role, setRole] = useState(ROLE_OPTIONS[0]);
+  const [role, setRole] = useState('직원');
   const [days, setDays] = useState(15);
+  const [deleteId, setDeleteId] = useState('');
 
-  const rows = employees
-    .filter((e) => e.isActive)
-    .map((e) => {
-      const granted = e.annualDays * 8;
-      const used = usedUnits(e.id, requests);
-      const rem = decompose(granted - used);
-      const usedAnnual = countType(e.id, 'annual', requests);
-      const usedHalf =
-        countType(e.id, 'half_am', requests) + countType(e.id, 'half_pm', requests);
-      const usedHourly = countType(e.id, 'hourly', requests);
-      const pending = requests.filter(
-        (r) => r.employeeId === e.id && r.status === 'requested',
-      ).length;
-      return { e, rem, usedAnnual, usedHalf, usedHourly, pending, over: granted - used < 0 };
-    });
+  const actives = employees.filter((e) => e.isActive);
+
+  const rows = actives.map((e) => {
+    const granted = e.annualDays * 8;
+    const used = usedUnits(e.id, requests);
+    const rem = decompose(granted - used);
+    const usedAnnual = countType(e.id, 'annual', requests);
+    const usedHalf =
+      countType(e.id, 'half_am', requests) + countType(e.id, 'half_pm', requests);
+    const usedHourly = countType(e.id, 'hourly', requests);
+    const pending = requests.filter(
+      (r) => r.employeeId === e.id && r.status === 'requested',
+    ).length;
+    return { e, rem, usedAnnual, usedHalf, usedHourly, pending, over: granted - used < 0 };
+  });
 
   const addEmp = () => {
     if (!name.trim()) return;
@@ -51,10 +58,17 @@ export function AdminBalance({ employees, requests, updateEmployees }: AdminBala
       prev.map((e) => (e.id === id ? { ...e, annualDays: Math.max(0, Number(v)) } : e)),
     );
 
-  const deactivate = (id: string) =>
-    updateEmployees((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, isActive: false } : e)),
-    );
+  const removeEmp = (id: string, empName: string) => {
+    if (!confirm(`${empName} 직원을 삭제할까요?\n연차 신청 내역도 함께 삭제됩니다.`)) return;
+    onDeleteEmployee(id);
+    if (deleteId === id) setDeleteId('');
+  };
+
+  const removeSelected = () => {
+    if (!deleteId) return;
+    const emp = actives.find((e) => e.id === deleteId);
+    if (emp) removeEmp(deleteId, emp.name);
+  };
 
   const downloadCSV = () => {
     const head = [
@@ -114,7 +128,7 @@ export function AdminBalance({ employees, requests, updateEmployees }: AdminBala
               <th className="px-2 py-2.5 font-medium">사용(연/반/시)</th>
               <th className="px-2 py-2.5 font-medium text-slate-700">남은 잔여</th>
               <th className="px-2 py-2.5 font-medium">대기</th>
-              <th className="px-2 py-2.5"></th>
+              <th className="px-2 py-2.5 font-medium text-center">삭제</th>
             </tr>
           </thead>
           <tbody>
@@ -131,6 +145,7 @@ export function AdminBalance({ employees, requests, updateEmployees }: AdminBala
                   <input
                     type="number"
                     min={0}
+                    step={0.5}
                     value={r.e.annualDays}
                     onChange={(e) => setDaysFor(r.e.id, e.target.value)}
                     className="w-16 rounded-lg border border-slate-300 px-2 py-1 text-right text-sm"
@@ -157,11 +172,11 @@ export function AdminBalance({ employees, requests, updateEmployees }: AdminBala
                     '-'
                   )}
                 </td>
-                <td className="px-2 py-2.5">
+                <td className="px-2 py-2.5 text-center">
                   <button
                     type="button"
-                    onClick={() => deactivate(r.e.id)}
-                    className="text-xs text-slate-300 hover:text-rose-500"
+                    onClick={() => removeEmp(r.e.id, r.e.name)}
+                    className="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-600 hover:bg-rose-100"
                   >
                     삭제
                   </button>
@@ -171,6 +186,7 @@ export function AdminBalance({ employees, requests, updateEmployees }: AdminBala
           </tbody>
         </table>
       </div>
+
       <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex-1">
           <label className="mb-1 block text-xs text-slate-500">직원명</label>
@@ -199,6 +215,7 @@ export function AdminBalance({ employees, requests, updateEmployees }: AdminBala
           <input
             type="number"
             min={0}
+            step={0.5}
             value={days}
             onChange={(e) => setDays(Number(e.target.value))}
             className="w-20 rounded-lg border border-slate-300 px-2 py-2 text-right text-sm"
@@ -210,6 +227,32 @@ export function AdminBalance({ employees, requests, updateEmployees }: AdminBala
           className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900"
         >
           추가
+        </button>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-rose-100 bg-rose-50/50 p-4 shadow-sm">
+        <div className="flex-1">
+          <label className="mb-1 block text-xs text-rose-600">삭제할 직원</label>
+          <select
+            value={deleteId}
+            onChange={(e) => setDeleteId(e.target.value)}
+            className="w-full rounded-lg border border-rose-200 bg-white px-2.5 py-2 text-sm"
+          >
+            <option value="">직원 선택</option>
+            {actives.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.name} · {e.role}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button
+          type="button"
+          onClick={removeSelected}
+          disabled={!deleteId}
+          className="rounded-lg bg-rose-500 px-4 py-2 text-sm font-medium text-white hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          삭제
         </button>
       </div>
     </div>
