@@ -71,11 +71,22 @@ export default function App() {
     }
   };
 
+  const hardRefresh = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('_', String(Date.now()));
+    window.location.replace(url.toString());
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800">
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
-          <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={hardRefresh}
+            title="새로고침"
+            className="flex items-center gap-2.5 rounded-xl text-left transition hover:bg-slate-50 active:scale-[0.98]"
+          >
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800 text-sm font-bold text-white">
               N
             </div>
@@ -83,7 +94,7 @@ export default function App() {
               <h1 className="text-sm font-bold text-slate-900">뉴센스의원 연차 관리</h1>
               <p className="text-xs text-slate-500">남은 연차 · 반차 · 시간차 한눈에</p>
             </div>
-          </div>
+          </button>
           <div className="flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-sm">
             <button
               type="button"
