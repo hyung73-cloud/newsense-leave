@@ -20,6 +20,10 @@ export function AdminBalance({
   const [role, setRole] = useState('직원');
   const [days, setDays] = useState(15);
   const [deleteId, setDeleteId] = useState('');
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editRole, setEditRole] = useState('직원');
+  const [editDays, setEditDays] = useState(10.5);
 
   const actives = employees.filter((e) => e.isActive);
 
@@ -68,6 +72,27 @@ export function AdminBalance({
     if (!deleteId) return;
     const emp = actives.find((e) => e.id === deleteId);
     if (emp) removeEmp(deleteId, emp.name);
+  };
+
+  const openEdit = (emp: Employee) => {
+    setEditId(emp.id);
+    setEditName(emp.name);
+    setEditRole(emp.role);
+    setEditDays(emp.annualDays);
+  };
+
+  const closeEdit = () => setEditId(null);
+
+  const saveEdit = () => {
+    if (!editId || !editName.trim()) return;
+    updateEmployees((prev) =>
+      prev.map((e) =>
+        e.id === editId
+          ? { ...e, name: editName.trim(), role: editRole, annualDays: Math.max(0, Number(editDays)) }
+          : e,
+      ),
+    );
+    closeEdit();
   };
 
   const downloadCSV = () => {
@@ -128,7 +153,7 @@ export function AdminBalance({
               <th className="px-2 py-2.5 font-medium">사용(연/반/시)</th>
               <th className="px-2 py-2.5 font-medium text-slate-700">남은 잔여</th>
               <th className="px-2 py-2.5 font-medium">대기</th>
-              <th className="px-2 py-2.5 font-medium text-center">삭제</th>
+              <th className="px-2 py-2.5 font-medium text-center">관리</th>
             </tr>
           </thead>
           <tbody>
@@ -173,13 +198,22 @@ export function AdminBalance({
                   )}
                 </td>
                 <td className="px-2 py-2.5 text-center">
-                  <button
-                    type="button"
-                    onClick={() => removeEmp(r.e.id, r.e.name)}
-                    className="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-600 hover:bg-rose-100"
-                  >
-                    삭제
-                  </button>
+                  <div className="flex items-center justify-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(r.e)}
+                      className="rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-600 hover:bg-sky-100"
+                    >
+                      수정
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeEmp(r.e.id, r.e.name)}
+                      className="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-600 hover:bg-rose-100"
+                    >
+                      삭제
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -255,6 +289,71 @@ export function AdminBalance({
           삭제
         </button>
       </div>
+
+      {editId && (
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center px-4"
+          style={{ backgroundColor: 'rgba(15,23,42,0.45)' }}
+          onClick={closeEdit}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-base font-bold text-slate-800">직원 정보 수정</h2>
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="mb-1 block text-xs text-slate-500">직원명</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-slate-500">역할</label>
+                <select
+                  value={editRole}
+                  onChange={(e) => setEditRole(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm"
+                >
+                  {ROLE_OPTIONS.map((x) => (
+                    <option key={x}>{x}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-slate-500">부여 연차</label>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.5}
+                  value={editDays}
+                  onChange={(e) => setEditDays(Number(e.target.value))}
+                  className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm"
+                />
+              </div>
+            </div>
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={closeEdit}
+                className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm text-slate-500 hover:bg-slate-50"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={saveEdit}
+                className="flex-1 rounded-xl bg-slate-800 py-2.5 text-sm font-medium text-white hover:bg-slate-900"
+              >
+                저장
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
