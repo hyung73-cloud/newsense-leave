@@ -15,6 +15,11 @@
           history.replaceState(null, '', path + location.hash);
         }
       })();
+      // React 번들과 무관하게 동작 — 캐시된 JS여도 강제 새로고침 가능
+      window.__NSC_HARD_REFRESH = function () {
+        var path = location.pathname || '/';
+        location.replace(location.origin + path + '?_=' + Date.now());
+      };
     </script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />

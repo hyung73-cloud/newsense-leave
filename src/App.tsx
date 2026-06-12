@@ -89,7 +89,8 @@ export default function App() {
   const hardRefresh = () => {
     if (refreshing) return;
     setRefreshing(true);
-    doHardRefresh();
+    if (window.__NSC_HARD_REFRESH) window.__NSC_HARD_REFRESH();
+    else doHardRefresh();
   };
 
   const goLeave = () => {
@@ -253,9 +254,12 @@ export default function App() {
         )}
 
         <footer className="mt-8 border-t border-slate-200 pt-4 text-center text-xs text-slate-400">
-          {mainSection === 'leave'
-            ? '환산: 반차 2 = 연차 1 · 시간차 4 = 반차 1 · 시간차 8 = 연차 1 · 데이터는 이 기기 브라우저에 저장됩니다'
-            : '태그 = 통계·검색용 · 메모 = 상담 기록 · 데이터는 이 기기 브라우저에 저장됩니다'}
+          <p>
+            {mainSection === 'leave'
+              ? '환산: 반차 2 = 연차 1 · 시간차 4 = 반차 1 · 시간차 8 = 연차 1 · 데이터는 이 기기 브라우저에 저장됩니다'
+              : '태그 = 통계·검색용 · 메모 = 상담 기록 · 데이터는 이 기기 브라우저에 저장됩니다'}
+          </p>
+          <p className="mt-1 text-[10px] text-slate-300">빌드 {__APP_VERSION__}</p>
         </footer>
       </main>
 
