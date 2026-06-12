@@ -19,7 +19,7 @@ export default function App() {
   const initial = useMemo(() => store.load(), []);
   const [employees, setEmployees] = useState<Employee[]>(initial.employees);
   const [requests, setRequests] = useState<LeaveRequest[]>(initial.requests);
-  const [mainSection, setMainSection] = useState<MainSection>('leave');
+  const [mainSection, setMainSection] = useState<MainSection>('notes');
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminTab, setAdminTab] = useState<AdminTab>('balance');
   const [showPwModal, setShowPwModal] = useState(false);
@@ -104,43 +104,65 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800">
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-5xl px-4 py-3">
-          <div className="flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={hardRefresh}
-            disabled={refreshing}
-            title="강제 새로고침"
-            className="flex items-center gap-2.5 rounded-xl text-left transition hover:bg-slate-50 active:scale-[0.98] disabled:opacity-60"
-          >
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800 text-sm font-bold text-white">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={hardRefresh}
+              disabled={refreshing}
+              title="강제 새로고침"
+              className="flex min-w-0 shrink items-center gap-2 rounded-xl text-left transition hover:bg-slate-50 active:scale-[0.98] disabled:opacity-60"
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-800 text-sm font-bold text-white">
                 N
               </div>
-              <div>
-                <h1 className="text-sm font-bold text-slate-900">
-                  {mainSection === 'leave' ? '뉴센스의원 연차 관리' : '뉴센스의원 고객노트'}
+              <div className="min-w-0">
+                <h1 className="truncate text-sm font-bold text-slate-900">
+                  {mainSection === 'leave' ? '뉴센스의원 연차' : '뉴센스의원 고객노트'}
                 </h1>
-                <p className="text-xs text-slate-500">
-                  {refreshing
-                    ? '새로고침 중…'
-                    : mainSection === 'leave'
-                      ? '남은 연차 · 반차 · 시간차 한눈에 · 탭하면 새로고침'
-                      : '5초 입력 · 태그로 CRM 축적 · 탭하면 새로고침'}
+                <p className="truncate text-xs text-slate-500">
+                  {refreshing ? '새로고침 중…' : '탭하면 새로고침'}
                 </p>
               </div>
             </button>
+
+            <div className="ml-auto flex shrink-0 items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-xs sm:text-sm">
+              <button
+                type="button"
+                onClick={goLeave}
+                className={`rounded-md px-2.5 py-1.5 font-bold sm:px-3 ${
+                  mainSection === 'leave'
+                    ? 'bg-slate-800 text-white shadow-sm'
+                    : 'text-slate-500'
+                }`}
+              >
+                연차관리
+              </button>
+              <button
+                type="button"
+                onClick={goNotes}
+                className={`rounded-md px-2.5 py-1.5 font-bold sm:px-3 ${
+                  mainSection === 'notes'
+                    ? 'bg-[#FEE500] text-[#3B1E1E] shadow-sm'
+                    : 'text-slate-500'
+                }`}
+              >
+                고객노트
+              </button>
+            </div>
+
             {mainSection === 'leave' ? (
-              <div className="flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-sm">
+              <div className="flex shrink-0 items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-xs sm:text-sm">
                 <button
                   type="button"
                   onClick={() => setIsAdmin(false)}
-                  className={`rounded-md px-3 py-1.5 font-medium ${!isAdmin ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
+                  className={`rounded-md px-2.5 py-1.5 font-medium sm:px-3 ${!isAdmin ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
                 >
                   직원
                 </button>
                 <button
                   type="button"
                   onClick={() => !isAdmin && openAdmin()}
-                  className={`rounded-md px-3 py-1.5 font-medium ${isAdmin ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
+                  className={`rounded-md px-2.5 py-1.5 font-medium sm:px-3 ${isAdmin ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
                 >
                   관리자
                 </button>
@@ -151,34 +173,22 @@ export default function App() {
                 session={noteSessionState}
                 onLogin={setNoteSessionState}
                 onLogout={() => setNoteSessionState(null)}
+                variant="header"
               />
             )}
           </div>
 
-          <div className="mt-3 flex gap-2">
-            <button
-              type="button"
-              onClick={goLeave}
-              className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition active:scale-[0.98] ${
-                mainSection === 'leave'
-                  ? 'bg-slate-800 text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-600'
-              }`}
-            >
-              연차관리
-            </button>
-            <button
-              type="button"
-              onClick={goNotes}
-              className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition active:scale-[0.98] ${
-                mainSection === 'notes'
-                  ? 'bg-[#FEE500] text-[#3B1E1E] shadow-sm'
-                  : 'bg-slate-100 text-slate-600'
-              }`}
-            >
-              고객노트
-            </button>
-          </div>
+          {mainSection === 'notes' && !noteSessionState && (
+            <div className="mt-3 border-t border-slate-100 pt-3">
+              <NotePinAuth
+                employees={actives}
+                session={noteSessionState}
+                onLogin={setNoteSessionState}
+                onLogout={() => setNoteSessionState(null)}
+                variant="panel"
+              />
+            </div>
+          )}
         </div>
       </header>
 
@@ -234,13 +244,10 @@ export default function App() {
         ) : noteSessionState ? (
           <CustomerNoteView session={noteSessionState} />
         ) : (
-          <div className="mx-auto max-w-lg rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
+          <div className="mx-auto max-w-lg rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
             <p className="text-4xl">🔒</p>
-            <p className="mt-3 text-base font-bold text-slate-700">PIN을 입력해주세요</p>
-            <p className="mt-1 text-sm text-slate-400">
-              오른쪽 상단에서 4자리 PIN 입력 후<br />
-              고객노트를 작성할 수 있습니다
-            </p>
+            <p className="mt-3 text-base font-bold text-slate-700">PIN 입력 후 작성 가능</p>
+            <p className="mt-1 text-sm text-slate-400">위에서 4자리 PIN을 입력해주세요</p>
           </div>
         )}
 

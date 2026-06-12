@@ -7,11 +7,18 @@ interface NotePinAuthProps {
   session: NoteSession | null;
   onLogin: (s: NoteSession) => void;
   onLogout: () => void;
+  variant?: 'header' | 'panel';
 }
 
 const PAD = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'];
 
-export function NotePinAuth({ employees, session, onLogin, onLogout }: NotePinAuthProps) {
+export function NotePinAuth({
+  employees,
+  session,
+  onLogin,
+  onLogout,
+  variant = 'panel',
+}: NotePinAuthProps) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
 
@@ -42,10 +49,10 @@ export function NotePinAuth({ employees, session, onLogin, onLogout }: NotePinAu
 
   if (session) {
     return (
-      <div className="flex items-center gap-2">
-        <div className="rounded-xl bg-[#FEE500] px-3 py-2 text-center">
-          <div className="text-xs font-medium text-[#3B1E1E]/70">작성자</div>
-          <div className="text-sm font-bold text-[#3B1E1E]">{session.employeeName}</div>
+      <div className="flex shrink-0 items-center gap-1.5">
+        <div className="rounded-xl bg-[#FEE500] px-2.5 py-1.5 text-center sm:px-3 sm:py-2">
+          <div className="text-[10px] font-medium text-[#3B1E1E]/70 sm:text-xs">작성자</div>
+          <div className="text-xs font-bold text-[#3B1E1E] sm:text-sm">{session.employeeName}</div>
         </div>
         <button
           type="button"
@@ -53,22 +60,32 @@ export function NotePinAuth({ employees, session, onLogin, onLogout }: NotePinAu
             noteSession.clear();
             onLogout();
           }}
-          className="rounded-lg border border-slate-200 px-2.5 py-2 text-xs text-slate-500 active:bg-slate-100"
+          className="rounded-lg border border-slate-200 px-2 py-1.5 text-[10px] text-slate-500 active:bg-slate-100 sm:text-xs"
         >
-          PIN<br />변경
+          PIN
+          <br />
+          변경
         </button>
       </div>
     );
   }
 
+  if (variant === 'header') {
+    return (
+      <span className="shrink-0 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-500">
+        PIN 입력
+      </span>
+    );
+  }
+
   return (
-    <div className="w-full max-w-[200px]">
-      <div className="mb-1.5 text-right text-xs font-medium text-slate-500">PIN 4자리</div>
-      <div className="mb-2 flex justify-end gap-1.5">
+    <div className="mx-auto w-full max-w-xs">
+      <div className="mb-2 text-center text-sm font-medium text-slate-600">PIN 4자리 입력</div>
+      <div className="mb-3 flex justify-center gap-2">
         {[0, 1, 2, 3].map((i) => (
           <div
             key={i}
-            className={`flex h-10 w-10 items-center justify-center rounded-lg border-2 text-lg font-bold ${
+            className={`flex h-12 w-12 items-center justify-center rounded-xl border-2 text-lg font-bold ${
               error
                 ? 'border-rose-300 bg-rose-50 text-rose-400'
                 : pin[i]
@@ -80,15 +97,17 @@ export function NotePinAuth({ employees, session, onLogin, onLogout }: NotePinAu
           </div>
         ))}
       </div>
-      {error && <p className="mb-1 text-right text-xs text-rose-500">PIN이 올바르지 않습니다</p>}
-      <div className="grid grid-cols-3 gap-1">
+      {error && (
+        <p className="mb-2 text-center text-sm text-rose-500">PIN이 올바르지 않습니다</p>
+      )}
+      <div className="grid grid-cols-3 gap-2">
         {PAD.map((key, i) =>
           key ? (
             <button
               key={i}
               type="button"
               onClick={() => tap(key)}
-              className="flex h-11 items-center justify-center rounded-xl bg-slate-100 text-base font-bold text-slate-700 active:bg-[#FEE500] active:text-[#3B1E1E]"
+              className="flex h-14 items-center justify-center rounded-2xl bg-slate-100 text-lg font-bold text-slate-700 active:bg-[#FEE500] active:text-[#3B1E1E]"
             >
               {key}
             </button>
