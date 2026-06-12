@@ -1,6 +1,21 @@
 <!doctype html>
 <html lang="ko">
   <head>
+    <script>
+      (function () {
+        var host = location.hostname;
+        var path = location.pathname || '/';
+        // HTTP → HTTPS 자동 전환 (주의 요함 해결)
+        if (location.protocol === 'http:' && host.endsWith('newsense.co.kr')) {
+          location.replace('https://' + host + path);
+          return;
+        }
+        // ?_= 같은 임시 파라미터 제거 → 깔끔한 주소
+        if (location.search) {
+          history.replaceState(null, '', path);
+        }
+      })();
+    </script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

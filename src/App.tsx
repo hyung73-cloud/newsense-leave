@@ -128,25 +128,25 @@ export default function App() {
             <div className="ml-auto flex shrink-0 items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-xs sm:text-sm">
               <button
                 type="button"
-                onClick={goLeave}
-                className={`rounded-md px-2.5 py-1.5 font-bold sm:px-3 ${
-                  mainSection === 'leave'
-                    ? 'bg-slate-800 text-white shadow-sm'
-                    : 'text-slate-500'
-                }`}
-              >
-                연차관리
-              </button>
-              <button
-                type="button"
                 onClick={goNotes}
-                className={`rounded-md px-2.5 py-1.5 font-bold sm:px-3 ${
+                className={`rounded-md px-3 py-1.5 font-bold sm:px-3.5 ${
                   mainSection === 'notes'
                     ? 'bg-[#FEE500] text-[#3B1E1E] shadow-sm'
                     : 'text-slate-500'
                 }`}
               >
                 고객노트
+              </button>
+              <button
+                type="button"
+                onClick={goLeave}
+                className={`rounded-md px-2.5 py-1.5 font-medium sm:px-3 ${
+                  mainSection === 'leave'
+                    ? 'bg-slate-800 text-white shadow-sm'
+                    : 'text-slate-500'
+                }`}
+              >
+                연차관리
               </button>
             </div>
 
