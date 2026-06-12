@@ -7,12 +7,12 @@
         var path = location.pathname || '/';
         // HTTP → HTTPS 자동 전환 (주의 요함 해결)
         if (location.protocol === 'http:' && host.endsWith('newsense.co.kr')) {
-          location.replace('https://' + host + path);
+          location.replace('https://' + host + path + location.search + location.hash);
           return;
         }
-        // ?_= 같은 임시 파라미터 제거 → 깔끔한 주소
+        // ?_= 캐시우회 파라미터는 로드 후 주소창에서 제거
         if (location.search) {
-          history.replaceState(null, '', path);
+          history.replaceState(null, '', path + location.hash);
         }
       })();
     </script>

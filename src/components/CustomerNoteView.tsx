@@ -1,9 +1,16 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { CUSTOMER_TAGS } from '../data/customerTags';
 import { daysInMonth, pad, weekdayOf, WD_KR, ymd } from '../lib/date';
 import { customerNoteStore, exportNotesCSV } from '../lib/customerNoteStore';
+import { copyShareCode, shareNotesFile } from '../lib/noteTransfer';
 import type { NoteSession } from '../lib/noteSession';
 import type { CustomerNote } from '../types';
+import { NoteEditModal } from './NoteEditModal';
+
+function fmtDateTime(iso: string) {
+  const d = new Date(iso);
+  return `${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 interface CustomerNoteViewProps {
   session: NoteSession;
@@ -21,6 +28,8 @@ export function CustomerNoteView({ session }: CustomerNoteViewProps) {
   const [memo, setMemo] = useState('');
   const [notes, setNotes] = useState<CustomerNote[]>(() => customerNoteStore.load());
   const [savedMsg, setSavedMsg] = useState('');
+  const [editNote, setEditNote] = useState<CustomerNote | null>(null);
+  const [shareMsg, setShareMsg] = useState('');
 
   const [viewY, setViewY] = useState(() => new Date().getFullYear());
   const [viewM, setViewM] = useState(() => new Date().getMonth() + 1);
@@ -84,7 +93,43 @@ export function CustomerNoteView({ session }: CustomerNoteViewProps) {
   for (let i = 0; i < firstWd; i++) cells.push(null);
   for (let d = 1; d <= total; d++) cells.push(d);
 
-  const todayNotes = notes.filter((n) => n.date === date);
+  const myNotes = useMemo(
+    () =>
+      customerNoteStore.sortByNewest(
+        notes.filter((n) => n.authorId === session.employeeId),
+      ),
+    [notes, session.employeeId],
+  );
+
+  const sendNotes = async () => {
+    if (myNotes.length === 0) return;
+    setShareMsg('');
+    const result = await shareNotesFile(myNotes, session.employeeName);
+    if (result === 'shared') setShareMsg('✓ 공유 메뉴에서 카톡 등으로 보내세요');
+    else if (result === 'downloaded') setShareMsg('✓ 파일 저장됨 — 카톡으로 이 파일을 보내주세요');
+    else setShareMsg('');
+    setTimeout(() => setShareMsg(''), 5000);
+  };
+
+  const copyCode = async () => {
+    if (myNotes.length === 0) return;
+    try {
+      await copyShareCode(myNotes);
+      setShareMsg('✓ 전송 코드 복사됨 — 카톡에 붙여넣기');
+      setTimeout(() => setShareMsg(''), 5000);
+    } catch {
+      setShareMsg('복사 실패 — 노트 보내기를 이용해주세요');
+    }
+  };
+
+  const saveEdit = (patch: { date: string; customerName: string; tags: string[]; memo: string }) => {
+    if (!editNote) return;
+    const next = customerNoteStore.update(editNote.id, patch);
+    setNotes(next);
+    setEditNote(null);
+    setSavedMsg('✓ 수정됨');
+    setTimeout(() => setSavedMsg(''), 2000);
+  };
 
   return (
     <div className="mx-auto max-w-lg space-y-4 pb-6">
@@ -222,30 +267,67 @@ export function CustomerNoteView({ session }: CustomerNoteViewProps) {
         저장
       </button>
 
-      {/* 오늘 저장 현황 + CSV */}
+      {/* 내 작성 기록 */}
       <section className="rounded-2xl border border-slate-200 bg-white p-4">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-slate-600">
-            이 날짜 저장 <strong className="text-slate-900">{todayNotes.length}</strong>건 · 전체{' '}
-            <strong className="text-slate-900">{notes.length}</strong>건
+          <span className="text-sm font-semibold text-slate-700">
+            내 작성 기록 <span className="font-normal text-slate-500">({myNotes.length}건)</span>
           </span>
-          {notes.length > 0 && (
-            <button
-              type="button"
-              onClick={() => exportNotesCSV(notes)}
-              className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-medium text-white active:bg-slate-900"
-            >
-              CSV
-            </button>
+          {myNotes.length > 0 && (
+            <div className="flex gap-1.5">
+              <button
+                type="button"
+                onClick={() => void sendNotes()}
+                className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white active:bg-sky-700"
+              >
+                노트 보내기
+              </button>
+              <button
+                type="button"
+                onClick={() => void copyCode()}
+                className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 active:bg-slate-50"
+              >
+                코드복사
+              </button>
+              <button
+                type="button"
+                onClick={() => exportNotesCSV(myNotes)}
+                className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-medium text-white active:bg-slate-900"
+              >
+                CSV
+              </button>
+            </div>
           )}
         </div>
-        {todayNotes.length > 0 && (
-          <ul className="mt-3 space-y-2 border-t border-slate-100 pt-3">
-            {todayNotes.slice(0, 5).map((n) => (
+        {shareMsg && <p className="mt-2 text-center text-xs text-sky-600">{shareMsg}</p>}
+        {myNotes.length > 0 && !shareMsg && (
+          <p className="mt-2 text-center text-xs text-slate-400">
+            주기적으로 「노트 보내기」→ 카톡으로 관리자에게 전달
+          </p>
+        )}
+        {myNotes.length === 0 ? (
+          <p className="mt-3 text-center text-sm text-slate-400">아직 작성한 기록이 없습니다</p>
+        ) : (
+          <ul className="mt-3 max-h-[50vh] space-y-2 overflow-y-auto border-t border-slate-100 pt-3">
+            {myNotes.map((n) => (
               <li key={n.id} className="rounded-xl bg-slate-50 px-3 py-2.5 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-800">{n.customerName}</span>
-                  <span className="text-xs text-slate-400">{n.authorName}</span>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-xs text-slate-400">{fmtDateTime(n.createdAt)}</span>
+                      <span className="text-xs text-slate-400">
+                        상담 {n.date.slice(5).replace('-', '/')}
+                      </span>
+                    </div>
+                    <div className="mt-0.5 font-bold text-slate-800">{n.customerName}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditNote(n)}
+                    className="shrink-0 rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-600 active:bg-sky-100"
+                  >
+                    수정
+                  </button>
                 </div>
                 {n.tags.length > 0 && (
                   <div className="mt-1 flex flex-wrap gap-1">
@@ -259,12 +341,16 @@ export function CustomerNoteView({ session }: CustomerNoteViewProps) {
                     ))}
                   </div>
                 )}
-                <p className="mt-1 line-clamp-2 text-slate-600">{n.memo}</p>
+                <p className="mt-1 whitespace-pre-wrap text-slate-600">{n.memo}</p>
               </li>
             ))}
           </ul>
         )}
       </section>
+
+      {editNote && (
+        <NoteEditModal note={editNote} onClose={() => setEditNote(null)} onSave={saveEdit} />
+      )}
     </div>
   );
 }

@@ -60,11 +60,9 @@ export function NotePinAuth({
             noteSession.clear();
             onLogout();
           }}
-          className="rounded-lg border border-slate-200 px-2 py-1.5 text-[10px] text-slate-500 active:bg-slate-100 sm:text-xs"
+          className="rounded-lg border border-slate-200 px-2.5 py-2 text-[10px] font-medium text-slate-500 active:bg-slate-100 sm:text-xs"
         >
-          PIN
-          <br />
-          변경
+          PIN OUT
         </button>
       </div>
     );

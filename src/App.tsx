@@ -1,16 +1,18 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { AdminBalance } from './components/AdminBalance';
 import { AdminCalendar } from './components/AdminCalendar';
+import { AdminNotesPanel } from './components/AdminNotesPanel';
 import { ApprovePanel } from './components/ApprovePanel';
 import { CustomerNoteView } from './components/CustomerNoteView';
 import { NotePinAuth } from './components/NotePinAuth';
+import { PinWelcomeScreen } from './components/PinWelcomeScreen';
 import { StaffView } from './components/StaffView';
 import { hardRefresh as doHardRefresh } from './lib/hardRefresh';
 import { noteSession, type NoteSession } from './lib/noteSession';
 import { store } from './lib/store';
 import type { Employee, LeaveRequest } from './types';
 
-type AdminTab = 'balance' | 'calendar' | 'approve';
+type AdminTab = 'balance' | 'calendar' | 'approve' | 'notes';
 type MainSection = 'leave' | 'notes';
 
 const ADMIN_PASSWORD = '0876';
@@ -87,7 +89,7 @@ export default function App() {
   const hardRefresh = () => {
     if (refreshing) return;
     setRefreshing(true);
-    void doHardRefresh();
+    doHardRefresh();
   };
 
   const goLeave = () => {
@@ -110,7 +112,8 @@ export default function App() {
               onClick={hardRefresh}
               disabled={refreshing}
               title="강제 새로고침"
-              className="flex min-w-0 shrink items-center gap-2 rounded-xl text-left transition hover:bg-slate-50 active:scale-[0.98] disabled:opacity-60"
+              aria-label="강제 새로고침"
+              className="flex min-w-0 shrink touch-manipulation items-center gap-2 rounded-xl text-left transition hover:bg-slate-50 active:scale-[0.98] disabled:opacity-60"
             >
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-800 text-sm font-bold text-white">
                 N
@@ -209,6 +212,7 @@ export default function App() {
                     ['balance', '직원 잔여현황'],
                     ['calendar', '3개월 달력'],
                     ['approve', `승인${pendingCount ? ` (${pendingCount})` : ''}`],
+                    ['notes', '환자 기록'],
                   ] as const
                 ).map(([k, label]) => (
                   <button
@@ -239,16 +243,13 @@ export default function App() {
                   updateRequests={updateRequests}
                 />
               )}
+              {adminTab === 'notes' && <AdminNotesPanel />}
             </>
           )
         ) : noteSessionState ? (
           <CustomerNoteView session={noteSessionState} />
         ) : (
-          <div className="mx-auto max-w-lg rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
-            <p className="text-4xl">🔒</p>
-            <p className="mt-3 text-base font-bold text-slate-700">PIN 입력 후 작성 가능</p>
-            <p className="mt-1 text-sm text-slate-400">위에서 4자리 PIN을 입력해주세요</p>
-          </div>
+          <PinWelcomeScreen />
         )}
 
         <footer className="mt-8 border-t border-slate-200 pt-4 text-center text-xs text-slate-400">

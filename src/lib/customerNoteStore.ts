@@ -1,4 +1,5 @@
 import type { CustomerNote } from '../types';
+import { mergeNotes } from './noteTransfer';
 
 const KEY = 'nsc_notes';
 
@@ -20,6 +21,19 @@ export const customerNoteStore = {
     notes.unshift(note);
     this.save(notes);
     return notes;
+  },
+  update(id: string, patch: Partial<Pick<CustomerNote, 'date' | 'customerName' | 'tags' | 'memo'>>) {
+    const notes = this.load().map((n) => (n.id === id ? { ...n, ...patch } : n));
+    this.save(notes);
+    return notes;
+  },
+  sortByNewest(notes: CustomerNote[]) {
+    return [...notes].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+  mergeImport(incoming: CustomerNote[]) {
+    const result = mergeNotes(this.load(), incoming);
+    this.save(result.notes);
+    return result;
   },
 };
 
