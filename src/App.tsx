@@ -1,18 +1,19 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { AdminBalance } from './components/AdminBalance';
+import { AdminPinPanel } from './components/AdminPinPanel';
 import { AdminCalendar } from './components/AdminCalendar';
 import { AdminNotesPanel } from './components/AdminNotesPanel';
 import { ApprovePanel } from './components/ApprovePanel';
 import { CustomerNoteView } from './components/CustomerNoteView';
 import { NotePinAuth } from './components/NotePinAuth';
-import { PinWelcomeScreen } from './components/PinWelcomeScreen';
+import { PinLoginScreen } from './components/PinLoginScreen';
 import { StaffView } from './components/StaffView';
 import { hardRefresh as doHardRefresh } from './lib/hardRefresh';
 import { noteSession, type NoteSession } from './lib/noteSession';
 import { store } from './lib/store';
 import type { Employee, LeaveRequest } from './types';
 
-type AdminTab = 'balance' | 'calendar' | 'approve' | 'notes';
+type AdminTab = 'balance' | 'calendar' | 'approve' | 'notes' | 'pins';
 type MainSection = 'leave' | 'notes';
 
 const ADMIN_PASSWORD = '0876';
@@ -154,63 +155,74 @@ export default function App() {
               </button>
             </div>
 
-            {mainSection === 'leave' ? (
+            {mainSection === 'leave' && isAdmin ? (
               <div className="flex shrink-0 items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-xs sm:text-sm">
                 <button
                   type="button"
                   onClick={() => setIsAdmin(false)}
-                  className={`rounded-md px-2.5 py-1.5 font-medium sm:px-3 ${!isAdmin ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
+                  className="rounded-md px-2.5 py-1.5 font-medium text-slate-500 sm:px-3"
                 >
                   직원
                 </button>
                 <button
                   type="button"
-                  onClick={() => !isAdmin && openAdmin()}
-                  className={`rounded-md px-2.5 py-1.5 font-medium sm:px-3 ${isAdmin ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
+                  className="rounded-md bg-white px-2.5 py-1.5 font-medium text-slate-900 shadow-sm sm:px-3"
                 >
                   관리자
                 </button>
               </div>
-            ) : (
+            ) : mainSection === 'leave' ? (
+              <div className="flex shrink-0 items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-xs sm:text-sm">
+                <button
+                  type="button"
+                  className="rounded-md bg-white px-2.5 py-1.5 font-medium text-slate-900 shadow-sm sm:px-3"
+                >
+                  직원
+                </button>
+                <button
+                  type="button"
+                  onClick={openAdmin}
+                  className="rounded-md px-2.5 py-1.5 font-medium text-slate-500 sm:px-3"
+                >
+                  관리자
+                </button>
+              </div>
+            ) : null}
+            {noteSessionState ? (
               <NotePinAuth
-                employees={actives}
                 session={noteSessionState}
-                onLogin={setNoteSessionState}
                 onLogout={() => setNoteSessionState(null)}
-                variant="header"
               />
+            ) : (
+              <span className="shrink-0 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-500">
+                PIN 입력
+              </span>
             )}
           </div>
 
-          {mainSection === 'notes' && !noteSessionState && (
-            <div className="mt-3 border-t border-slate-100 pt-3">
-              <NotePinAuth
-                employees={actives}
-                session={noteSessionState}
-                onLogin={setNoteSessionState}
-                onLogout={() => setNoteSessionState(null)}
-                variant="panel"
-              />
-            </div>
-          )}
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-5">
+      <main className="mx-auto max-w-5xl px-4 py-4 sm:py-5">
         {mainSection === 'leave' ? (
           !isAdmin ? (
-            <StaffView
-              actives={actives}
-              requests={requests}
-              empById={empById}
-              updateRequests={updateRequests}
-            />
+            noteSessionState ? (
+              <StaffView
+                employeeId={noteSessionState.employeeId}
+                requests={requests}
+                empById={empById}
+                updateRequests={updateRequests}
+              />
+            ) : (
+              <PinLoginScreen employees={actives} onLogin={setNoteSessionState} />
+            )
           ) : (
             <>
               <div className="mb-5 flex flex-wrap gap-1.5">
                 {(
                   [
                     ['balance', '직원 잔여현황'],
+                    ['pins', 'PIN 설정'],
                     ['calendar', '3개월 달력'],
                     ['approve', `승인${pendingCount ? ` (${pendingCount})` : ''}`],
                     ['notes', '환자 기록'],
@@ -234,6 +246,9 @@ export default function App() {
                   onDeleteEmployee={deleteEmployee}
                 />
               )}
+              {adminTab === 'pins' && (
+                <AdminPinPanel employees={employees} updateEmployees={updateEmployees} />
+              )}
               {adminTab === 'calendar' && (
                 <AdminCalendar actives={actives} requests={requests} empById={empById} />
               )}
@@ -250,7 +265,7 @@ export default function App() {
         ) : noteSessionState ? (
           <CustomerNoteView session={noteSessionState} />
         ) : (
-          <PinWelcomeScreen />
+          <PinLoginScreen employees={actives} onLogin={setNoteSessionState} />
         )}
 
         <footer className="mt-8 border-t border-slate-200 pt-4 text-center text-xs text-slate-400">

@@ -5,14 +5,14 @@ import { Badge } from './Badge';
 import { MiniCalendars } from './MiniCalendars';
 
 interface StaffViewProps {
-  actives: Employee[];
+  employeeId: string;
   requests: LeaveRequest[];
   empById: Record<string, Employee>;
   updateRequests: (fn: (prev: LeaveRequest[]) => LeaveRequest[]) => void;
 }
 
-export function StaffView({ actives, requests, empById, updateRequests }: StaffViewProps) {
-  const [empId, setEmpId] = useState(actives[0]?.id || '');
+export function StaffView({ employeeId, requests, empById, updateRequests }: StaffViewProps) {
+  const empId = employeeId;
   const [pickDate, setPickDate] = useState<string | null>(null);
   const [hourly, setHourly] = useState(false);
   const [startTime, setStartTime] = useState('13:00');
@@ -72,19 +72,12 @@ export function StaffView({ actives, requests, empById, updateRequests }: StaffV
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-2">
-        <label className="text-sm font-medium text-slate-500">직원</label>
-        <select
-          value={empId}
-          onChange={(e) => setEmpId(e.target.value)}
-          className="flex-1 rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-medium focus:border-slate-500 focus:outline-none"
-        >
-          {actives.map((e) => (
-            <option key={e.id} value={e.id}>
-              {e.name} · {e.role}
-            </option>
-          ))}
-        </select>
+      <div className="rounded-2xl border border-[#FEE500]/60 bg-[#FEE500]/15 px-4 py-3">
+        <div className="text-xs font-medium text-[#3B1E1E]/70">내 연차</div>
+        <div className="text-lg font-bold text-[#3B1E1E]">
+          {emp?.name ?? '—'}
+          <span className="ml-2 text-sm font-medium text-slate-500">{emp?.role}</span>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
