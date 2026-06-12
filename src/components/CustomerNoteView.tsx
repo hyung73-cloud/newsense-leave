@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { CUSTOMER_TAGS } from '../data/customerTags';
 import { daysInMonth, pad, weekdayOf, WD_KR, ymd } from '../lib/date';
 import { customerNoteStore, exportNotesCSV } from '../lib/customerNoteStore';
-import type { CustomerNote, Employee } from '../types';
+import type { NoteSession } from '../lib/noteSession';
+import type { CustomerNote } from '../types';
 
 interface CustomerNoteViewProps {
-  actives: Employee[];
+  session: NoteSession;
 }
 
 function todayStr() {
@@ -13,8 +14,7 @@ function todayStr() {
   return ymd(d.getFullYear(), d.getMonth() + 1, d.getDate());
 }
 
-export function CustomerNoteView({ actives }: CustomerNoteViewProps) {
-  const [authorId, setAuthorId] = useState(actives[0]?.id || '');
+export function CustomerNoteView({ session }: CustomerNoteViewProps) {
   const [date, setDate] = useState(todayStr);
   const [customerName, setCustomerName] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -22,7 +22,6 @@ export function CustomerNoteView({ actives }: CustomerNoteViewProps) {
   const [notes, setNotes] = useState<CustomerNote[]>(() => customerNoteStore.load());
   const [savedMsg, setSavedMsg] = useState('');
 
-  const author = actives.find((e) => e.id === authorId);
   const [viewY, setViewY] = useState(() => new Date().getFullYear());
   const [viewM, setViewM] = useState(() => new Date().getMonth() + 1);
 
@@ -49,7 +48,6 @@ export function CustomerNoteView({ actives }: CustomerNoteViewProps) {
   };
 
   const save = () => {
-    if (!author) return;
     if (!customerName.trim()) {
       alert('고객명을 입력해주세요.');
       return;
@@ -65,8 +63,9 @@ export function CustomerNoteView({ actives }: CustomerNoteViewProps) {
       customerName: customerName.trim(),
       tags: [...tags],
       memo: memo.trim(),
-      authorId: author.id,
-      authorName: author.name,
+      authorId: session.employeeId,
+      authorName: session.employeeName,
+      authorPinId: session.authorPinId,
       createdAt: new Date().toISOString(),
     };
 
@@ -94,22 +93,6 @@ export function CustomerNoteView({ actives }: CustomerNoteViewProps) {
           {savedMsg}
         </div>
       )}
-
-      {/* 0. 작성자 */}
-      <section className="rounded-2xl bg-white p-4 shadow-sm">
-        <label className="mb-2 block text-xs font-medium text-slate-500">작성자</label>
-        <select
-          value={authorId}
-          onChange={(e) => setAuthorId(e.target.value)}
-          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-base font-medium focus:border-[#FEE500] focus:outline-none"
-        >
-          {actives.map((e) => (
-            <option key={e.id} value={e.id}>
-              {e.name}
-            </option>
-          ))}
-        </select>
-      </section>
 
       {/* 1. 날짜 */}
       <section className="rounded-2xl bg-white p-4 shadow-sm">

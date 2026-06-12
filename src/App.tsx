@@ -3,7 +3,9 @@ import { AdminBalance } from './components/AdminBalance';
 import { AdminCalendar } from './components/AdminCalendar';
 import { ApprovePanel } from './components/ApprovePanel';
 import { CustomerNoteView } from './components/CustomerNoteView';
+import { NotePinAuth } from './components/NotePinAuth';
 import { StaffView } from './components/StaffView';
+import { noteSession, type NoteSession } from './lib/noteSession';
 import { store } from './lib/store';
 import type { Employee, LeaveRequest } from './types';
 
@@ -22,6 +24,9 @@ export default function App() {
   const [showPwModal, setShowPwModal] = useState(false);
   const [pwInput, setPwInput] = useState('');
   const [pwError, setPwError] = useState(false);
+  const [noteSessionState, setNoteSessionState] = useState<NoteSession | null>(() =>
+    noteSession.load(),
+  );
 
   const persist = useCallback(
     (e: Employee[], r: LeaveRequest[]) => store.save({ employees: e, requests: r }),
@@ -87,6 +92,7 @@ export default function App() {
   const goNotes = () => {
     setMainSection('notes');
     setIsAdmin(false);
+    setNoteSessionState(noteSession.load());
   };
 
   return (
@@ -114,7 +120,7 @@ export default function App() {
                 </p>
               </div>
             </button>
-            {mainSection === 'leave' && (
+            {mainSection === 'leave' ? (
               <div className="flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-sm">
                 <button
                   type="button"
@@ -131,6 +137,13 @@ export default function App() {
                   관리자
                 </button>
               </div>
+            ) : (
+              <NotePinAuth
+                employees={actives}
+                session={noteSessionState}
+                onLogin={setNoteSessionState}
+                onLogout={() => setNoteSessionState(null)}
+              />
             )}
           </div>
 
@@ -210,8 +223,17 @@ export default function App() {
               )}
             </>
           )
+        ) : noteSessionState ? (
+          <CustomerNoteView session={noteSessionState} />
         ) : (
-          <CustomerNoteView actives={actives} />
+          <div className="mx-auto max-w-lg rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
+            <p className="text-4xl">🔒</p>
+            <p className="mt-3 text-base font-bold text-slate-700">PIN을 입력해주세요</p>
+            <p className="mt-1 text-sm text-slate-400">
+              오른쪽 상단에서 4자리 PIN 입력 후<br />
+              고객노트를 작성할 수 있습니다
+            </p>
+          </div>
         )}
 
         <footer className="mt-8 border-t border-slate-200 pt-4 text-center text-xs text-slate-400">

@@ -24,6 +24,8 @@ export function AdminBalance({
   const [editName, setEditName] = useState('');
   const [editRole, setEditRole] = useState('직원');
   const [editDays, setEditDays] = useState(10.5);
+  const [editPin, setEditPin] = useState('0000');
+  const [addPin, setAddPin] = useState('');
 
   const actives = employees.filter((e) => e.isActive);
 
@@ -43,18 +45,29 @@ export function AdminBalance({
 
   const addEmp = () => {
     if (!name.trim()) return;
+    const pin = addPin.replace(/\D/g, '').slice(0, 4);
+    if (pin.length !== 4) {
+      alert('고객노트 PIN은 4자리 숫자입니다.');
+      return;
+    }
+    if (actives.some((e) => e.pin === pin)) {
+      alert('이미 사용 중인 PIN입니다.');
+      return;
+    }
     updateEmployees((prev) => [
       ...prev,
       {
         id: 'e' + Date.now(),
         name: name.trim(),
         role,
+        pin,
         isJapaneseAvailable: false,
         isActive: true,
         annualDays: Number(days),
       },
     ]);
     setName('');
+    setAddPin('');
   };
 
   const setDaysFor = (id: string, v: string) =>
@@ -79,16 +92,32 @@ export function AdminBalance({
     setEditName(emp.name);
     setEditRole(emp.role);
     setEditDays(emp.annualDays);
+    setEditPin(emp.pin);
   };
 
   const closeEdit = () => setEditId(null);
 
   const saveEdit = () => {
     if (!editId || !editName.trim()) return;
+    const pin = editPin.replace(/\D/g, '').slice(0, 4);
+    if (pin.length !== 4) {
+      alert('고객노트 PIN은 4자리 숫자입니다.');
+      return;
+    }
+    if (actives.some((e) => e.id !== editId && e.pin === pin)) {
+      alert('이미 사용 중인 PIN입니다.');
+      return;
+    }
     updateEmployees((prev) =>
       prev.map((e) =>
         e.id === editId
-          ? { ...e, name: editName.trim(), role: editRole, annualDays: Math.max(0, Number(editDays)) }
+          ? {
+              ...e,
+              name: editName.trim(),
+              role: editRole,
+              pin,
+              annualDays: Math.max(0, Number(editDays)),
+            }
           : e,
       ),
     );
@@ -162,7 +191,7 @@ export function AdminBalance({
                 <td className="px-3 py-2.5 font-medium text-slate-700">
                   {r.e.name}
                   <div className="text-xs text-slate-400">
-                    {r.e.role}
+                    {r.e.role} · PIN {r.e.pin}
                     {r.e.isJapaneseAvailable ? ' · 🇯🇵' : ''}
                   </div>
                 </td>
@@ -255,6 +284,18 @@ export function AdminBalance({
             className="w-20 rounded-lg border border-slate-300 px-2 py-2 text-right text-sm"
           />
         </div>
+        <div>
+          <label className="mb-1 block text-xs text-slate-500">노트 PIN</label>
+          <input
+            type="text"
+            inputMode="numeric"
+            maxLength={4}
+            value={addPin}
+            onChange={(e) => setAddPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            placeholder="4자리"
+            className="w-20 rounded-lg border border-slate-300 px-2 py-2 text-center text-sm tracking-widest"
+          />
+        </div>
         <button
           type="button"
           onClick={addEmp}
@@ -332,6 +373,17 @@ export function AdminBalance({
                   value={editDays}
                   onChange={(e) => setEditDays(Number(e.target.value))}
                   className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-slate-500">고객노트 PIN (4자리)</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={editPin}
+                  onChange={(e) => setEditPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-center text-sm tracking-widest"
                 />
               </div>
             </div>

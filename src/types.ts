@@ -5,6 +5,7 @@ export interface Employee {
   id: string;
   name: string;
   role: string;
+  pin: string;
   isJapaneseAvailable: boolean;
   isActive: boolean;
   annualDays: number;
@@ -37,5 +38,6 @@ export interface CustomerNote {
   memo: string;
   authorId: string;
   authorName: string;
+  authorPinId: string;
   createdAt: string;
 }
