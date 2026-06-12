@@ -28,3 +28,14 @@ export interface AppState {
   employees: Employee[];
   requests: LeaveRequest[];
 }
+
+export interface CustomerNote {
+  id: string;
+  date: string;
+  customerName: string;
+  tags: string[];
+  memo: string;
+  authorId: string;
+  authorName: string;
+  createdAt: string;
+}

@@ -2,11 +2,13 @@ import { useCallback, useMemo, useState } from 'react';
 import { AdminBalance } from './components/AdminBalance';
 import { AdminCalendar } from './components/AdminCalendar';
 import { ApprovePanel } from './components/ApprovePanel';
+import { CustomerNoteView } from './components/CustomerNoteView';
 import { StaffView } from './components/StaffView';
 import { store } from './lib/store';
 import type { Employee, LeaveRequest } from './types';
 
 type AdminTab = 'balance' | 'calendar' | 'approve';
+type MainSection = 'leave' | 'notes';
 
 const ADMIN_PASSWORD = '0876';
 
@@ -14,6 +16,7 @@ export default function App() {
   const initial = useMemo(() => store.load(), []);
   const [employees, setEmployees] = useState<Employee[]>(initial.employees);
   const [requests, setRequests] = useState<LeaveRequest[]>(initial.requests);
+  const [mainSection, setMainSection] = useState<MainSection>('leave');
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminTab, setAdminTab] = useState<AdminTab>('balance');
   const [showPwModal, setShowPwModal] = useState(false);
@@ -77,95 +80,144 @@ export default function App() {
     window.location.replace(url.toString());
   };
 
+  const goLeave = () => {
+    setMainSection('leave');
+  };
+
+  const goNotes = () => {
+    setMainSection('notes');
+    setIsAdmin(false);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800">
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
-          <button
-            type="button"
-            onClick={hardRefresh}
-            title="새로고침"
-            className="flex items-center gap-2.5 rounded-xl text-left transition hover:bg-slate-50 active:scale-[0.98]"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800 text-sm font-bold text-white">
-              N
-            </div>
-            <div>
-              <h1 className="text-sm font-bold text-slate-900">뉴센스의원 연차 관리</h1>
-              <p className="text-xs text-slate-500">남은 연차 · 반차 · 시간차 한눈에</p>
-            </div>
-          </button>
-          <div className="flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-sm">
+        <div className="mx-auto max-w-5xl px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
             <button
               type="button"
-              onClick={() => setIsAdmin(false)}
-              className={`rounded-md px-3 py-1.5 font-medium ${!isAdmin ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
+              onClick={hardRefresh}
+              title="새로고침"
+              className="flex items-center gap-2.5 rounded-xl text-left transition hover:bg-slate-50 active:scale-[0.98]"
             >
-              직원
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800 text-sm font-bold text-white">
+                N
+              </div>
+              <div>
+                <h1 className="text-sm font-bold text-slate-900">
+                  {mainSection === 'leave' ? '뉴센스의원 연차 관리' : '뉴센스의원 고객노트'}
+                </h1>
+                <p className="text-xs text-slate-500">
+                  {mainSection === 'leave'
+                    ? '남은 연차 · 반차 · 시간차 한눈에'
+                    : '5초 입력 · 태그로 CRM 축적'}
+                </p>
+              </div>
+            </button>
+            {mainSection === 'leave' && (
+              <div className="flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-sm">
+                <button
+                  type="button"
+                  onClick={() => setIsAdmin(false)}
+                  className={`rounded-md px-3 py-1.5 font-medium ${!isAdmin ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
+                >
+                  직원
+                </button>
+                <button
+                  type="button"
+                  onClick={() => !isAdmin && openAdmin()}
+                  className={`rounded-md px-3 py-1.5 font-medium ${isAdmin ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
+                >
+                  관리자
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={goLeave}
+              className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition active:scale-[0.98] ${
+                mainSection === 'leave'
+                  ? 'bg-slate-800 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-600'
+              }`}
+            >
+              연차관리
             </button>
             <button
               type="button"
-              onClick={() => !isAdmin && openAdmin()}
-              className={`rounded-md px-3 py-1.5 font-medium ${isAdmin ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
+              onClick={goNotes}
+              className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition active:scale-[0.98] ${
+                mainSection === 'notes'
+                  ? 'bg-[#FEE500] text-[#3B1E1E] shadow-sm'
+                  : 'bg-slate-100 text-slate-600'
+              }`}
             >
-              관리자
+              고객노트
             </button>
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-5">
-        {!isAdmin ? (
-          <StaffView
-            actives={actives}
-            requests={requests}
-            empById={empById}
-            updateRequests={updateRequests}
-          />
+        {mainSection === 'leave' ? (
+          !isAdmin ? (
+            <StaffView
+              actives={actives}
+              requests={requests}
+              empById={empById}
+              updateRequests={updateRequests}
+            />
+          ) : (
+            <>
+              <div className="mb-5 flex flex-wrap gap-1.5">
+                {(
+                  [
+                    ['balance', '직원 잔여현황'],
+                    ['calendar', '3개월 달력'],
+                    ['approve', `승인${pendingCount ? ` (${pendingCount})` : ''}`],
+                  ] as const
+                ).map(([k, label]) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setAdminTab(k)}
+                    className={`rounded-lg px-3.5 py-2 text-sm font-medium ${adminTab === k ? 'bg-slate-800 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-100'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {adminTab === 'balance' && (
+                <AdminBalance
+                  employees={employees}
+                  requests={requests}
+                  updateEmployees={updateEmployees}
+                  onDeleteEmployee={deleteEmployee}
+                />
+              )}
+              {adminTab === 'calendar' && (
+                <AdminCalendar actives={actives} requests={requests} empById={empById} />
+              )}
+              {adminTab === 'approve' && (
+                <ApprovePanel
+                  requests={requests}
+                  empById={empById}
+                  updateRequests={updateRequests}
+                />
+              )}
+            </>
+          )
         ) : (
-          <>
-            <div className="mb-5 flex flex-wrap gap-1.5">
-              {(
-                [
-                  ['balance', '직원 잔여현황'],
-                  ['calendar', '3개월 달력'],
-                  ['approve', `승인${pendingCount ? ` (${pendingCount})` : ''}`],
-                ] as const
-              ).map(([k, label]) => (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => setAdminTab(k)}
-                  className={`rounded-lg px-3.5 py-2 text-sm font-medium ${adminTab === k ? 'bg-slate-800 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-100'}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            {adminTab === 'balance' && (
-              <AdminBalance
-                employees={employees}
-                requests={requests}
-                updateEmployees={updateEmployees}
-                onDeleteEmployee={deleteEmployee}
-              />
-            )}
-            {adminTab === 'calendar' && (
-              <AdminCalendar actives={actives} requests={requests} empById={empById} />
-            )}
-            {adminTab === 'approve' && (
-              <ApprovePanel
-                requests={requests}
-                empById={empById}
-                updateRequests={updateRequests}
-              />
-            )}
-          </>
+          <CustomerNoteView actives={actives} />
         )}
 
         <footer className="mt-8 border-t border-slate-200 pt-4 text-center text-xs text-slate-400">
-          환산: 반차 2 = 연차 1 · 시간차 4 = 반차 1 · 시간차 8 = 연차 1 · 데이터는 이 기기
-          브라우저에 저장됩니다
+          {mainSection === 'leave'
+            ? '환산: 반차 2 = 연차 1 · 시간차 4 = 반차 1 · 시간차 8 = 연차 1 · 데이터는 이 기기 브라우저에 저장됩니다'
+            : '태그 = 통계·검색용 · 메모 = 상담 기록 · 데이터는 이 기기 브라우저에 저장됩니다'}
         </footer>
       </main>
 
