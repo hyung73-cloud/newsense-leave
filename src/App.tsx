@@ -1,10 +1,11 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { AdminBalance } from './components/AdminBalance';
 import { AdminCalendar } from './components/AdminCalendar';
 import { ApprovePanel } from './components/ApprovePanel';
 import { CustomerNoteView } from './components/CustomerNoteView';
 import { NotePinAuth } from './components/NotePinAuth';
 import { StaffView } from './components/StaffView';
+import { hardRefresh as doHardRefresh } from './lib/hardRefresh';
 import { noteSession, type NoteSession } from './lib/noteSession';
 import { store } from './lib/store';
 import type { Employee, LeaveRequest } from './types';
@@ -27,6 +28,10 @@ export default function App() {
   const [noteSessionState, setNoteSessionState] = useState<NoteSession | null>(() =>
     noteSession.load(),
   );
+  const [refreshing, setRefreshing] = useState(false);
+
+  const dataRef = useRef({ employees: initial.employees, requests: initial.requests });
+  dataRef.current = { employees, requests };
 
   const persist = useCallback(
     (e: Employee[], r: LeaveRequest[]) => store.save({ employees: e, requests: r }),
@@ -36,20 +41,20 @@ export default function App() {
   const updateRequests = (fn: (prev: LeaveRequest[]) => LeaveRequest[]) =>
     setRequests((prev) => {
       const next = fn(prev);
-      persist(employees, next);
+      persist(dataRef.current.employees, next);
       return next;
     });
 
   const updateEmployees = (fn: (prev: Employee[]) => Employee[]) =>
     setEmployees((prev) => {
       const next = fn(prev);
-      persist(next, requests);
+      persist(next, dataRef.current.requests);
       return next;
     });
 
   const deleteEmployee = (id: string) => {
-    const nextEmp = employees.filter((e) => e.id !== id);
-    const nextReq = requests.filter((r) => r.employeeId !== id);
+    const nextEmp = dataRef.current.employees.filter((e) => e.id !== id);
+    const nextReq = dataRef.current.requests.filter((r) => r.employeeId !== id);
     setEmployees(nextEmp);
     setRequests(nextReq);
     persist(nextEmp, nextReq);
@@ -80,9 +85,9 @@ export default function App() {
   };
 
   const hardRefresh = () => {
-    const url = new URL(window.location.href);
-    url.searchParams.set('_', String(Date.now()));
-    window.location.replace(url.toString());
+    if (refreshing) return;
+    setRefreshing(true);
+    void doHardRefresh();
   };
 
   const goLeave = () => {
@@ -100,12 +105,13 @@ export default function App() {
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-5xl px-4 py-3">
           <div className="flex items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={hardRefresh}
-              title="새로고침"
-              className="flex items-center gap-2.5 rounded-xl text-left transition hover:bg-slate-50 active:scale-[0.98]"
-            >
+          <button
+            type="button"
+            onClick={hardRefresh}
+            disabled={refreshing}
+            title="강제 새로고침"
+            className="flex items-center gap-2.5 rounded-xl text-left transition hover:bg-slate-50 active:scale-[0.98] disabled:opacity-60"
+          >
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800 text-sm font-bold text-white">
                 N
               </div>
@@ -114,9 +120,11 @@ export default function App() {
                   {mainSection === 'leave' ? '뉴센스의원 연차 관리' : '뉴센스의원 고객노트'}
                 </h1>
                 <p className="text-xs text-slate-500">
-                  {mainSection === 'leave'
-                    ? '남은 연차 · 반차 · 시간차 한눈에'
-                    : '5초 입력 · 태그로 CRM 축적'}
+                  {refreshing
+                    ? '새로고침 중…'
+                    : mainSection === 'leave'
+                      ? '남은 연차 · 반차 · 시간차 한눈에 · 탭하면 새로고침'
+                      : '5초 입력 · 태그로 CRM 축적 · 탭하면 새로고침'}
                 </p>
               </div>
             </button>
