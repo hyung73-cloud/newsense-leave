@@ -7,8 +7,10 @@ import { ApprovePanel } from './components/ApprovePanel';
 import { CustomerNoteView } from './components/CustomerNoteView';
 import { NotePinAuth } from './components/NotePinAuth';
 import { PinLoginScreen } from './components/PinLoginScreen';
+import { LoadingState } from './components/ui/LoadingState';
 import { StaffView } from './components/StaffView';
 import { hardRefresh as doHardRefresh } from './lib/hardRefresh';
+import { storageHint, usesDb } from './lib/db';
 import { leaveApi } from './lib/leaveApi';
 import { noteSession, type NoteSession } from './lib/noteSession';
 import type { Employee, LeaveRequest } from './types';
@@ -139,6 +141,9 @@ export default function App() {
                 </h1>
                 <p className="truncate text-xs text-slate-500">
                   {refreshing ? '새로고침 중…' : '탭하면 새로고침'}
+                  {usesDb && (
+                    <span className="ml-1.5 font-medium text-sky-600">· DB 연결됨</span>
+                  )}
                 </p>
               </div>
             </button>
@@ -147,7 +152,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={goNotes}
-                className={`rounded-md px-3 py-1.5 font-bold sm:px-3.5 ${
+                className={`rounded-md px-3 py-1.5 font-semibold sm:px-3.5 ${
                   mainSection === 'notes'
                     ? 'bg-[#FEE500] text-[#3B1E1E] shadow-sm'
                     : 'text-slate-500'
@@ -158,7 +163,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={goLeave}
-                className={`rounded-md px-2.5 py-1.5 font-medium sm:px-3 ${
+                className={`rounded-md px-2.5 py-1.5 font-semibold sm:px-3 ${
                   mainSection === 'leave'
                     ? 'bg-slate-800 text-white shadow-sm'
                     : 'text-slate-500'
@@ -201,16 +206,7 @@ export default function App() {
                 </button>
               </div>
             ) : null}
-            {noteSessionState ? (
-              <NotePinAuth
-                session={noteSessionState}
-                onLogout={() => setNoteSessionState(null)}
-              />
-            ) : (
-              <span className="shrink-0 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-500">
-                PIN 입력
-              </span>
-            )}
+            <NotePinAuth session={noteSessionState} onLogout={() => setNoteSessionState(null)} />
           </div>
 
         </div>
@@ -218,7 +214,7 @@ export default function App() {
 
       <main className="mx-auto max-w-5xl px-4 py-4 sm:py-5">
         {!dataReady ? (
-          <p className="py-16 text-center text-sm text-slate-400">데이터 불러오는 중…</p>
+          <LoadingState message="데이터 불러오는 중…" />
         ) : mainSection === 'leave' ? (
           !isAdmin ? (
             noteSessionState ? (
@@ -284,18 +280,13 @@ export default function App() {
         )}
 
         {dataReady && (
-        <footer className="mt-8 border-t border-slate-200 pt-4 text-center text-xs text-slate-400">
-          <p>
-            {mainSection === 'leave'
-              ? leaveApi.usesDb
-                ? '환산: 반차 2 = 연차 1 · 시간차 4 = 반차 1 · 시간차 8 = 연차 1 · ☁ DB에 저장됩니다'
-                : '환산: 반차 2 = 연차 1 · 시간차 4 = 반차 1 · 시간차 8 = 연차 1 · 데이터는 이 기기 브라우저에 저장됩니다'
-              : leaveApi.usesDb
-                ? '태그 = 통계·검색용 · 메모 = 상담 기록 · ☁ DB에 저장됩니다'
-                : '태그 = 통계·검색용 · 메모 = 상담 기록 · 데이터는 이 기기 브라우저에 저장됩니다'}
-          </p>
-          <p className="mt-1 text-[10px] text-slate-300">빌드 {__APP_VERSION__}</p>
-        </footer>
+          <footer className="mt-8 border-t border-slate-200 pt-4 text-center text-xs text-slate-400">
+            <p>
+              {storageHint(mainSection)}
+              {usesDb ? ' · 모든 기기에서 DB 공유' : ' · 이 기기 브라우저에만 저장'}
+            </p>
+            <p className="mt-1 text-[10px] text-slate-300">빌드 {__APP_VERSION__}</p>
+          </footer>
         )}
       </main>
 

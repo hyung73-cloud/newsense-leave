@@ -1,18 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { formatTagLabel } from '../data/customerTags';
 import { customerNoteApi } from '../lib/customerNoteApi';
-import { daysInMonth, pad, weekdayOf, WD_KR, ymd } from '../lib/date';
+import { usesDb } from '../lib/db';
+import { daysInMonth, fmtDateTimeShort, pad, weekdayOf, WD_KR, ymd } from '../lib/date';
 import { exportNotesCSV } from '../lib/customerNoteStore';
-import { copyShareCode, shareNotesFile } from '../lib/noteTransfer';
+import { shareNotesFile } from '../lib/noteTransfer';
 import type { NoteSession } from '../lib/noteSession';
 import type { CustomerNote } from '../types';
 import { NoteEditModal } from './NoteEditModal';
 import { TagSelect } from './TagSelect';
+import { LoadingState } from './ui/LoadingState';
+import { SaveToast } from './ui/SaveToast';
 
-function fmtDateTime(iso: string) {
-  const d = new Date(iso);
-  return `${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
+const CARD = 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm';
 
 interface CustomerNoteViewProps {
   session: NoteSession;
@@ -21,20 +21,6 @@ interface CustomerNoteViewProps {
 function todayStr() {
   const d = new Date();
   return ymd(d.getFullYear(), d.getMonth() + 1, d.getDate());
-}
-
-function SaveToast({ message }: { message: string }) {
-  return (
-    <div
-      role="status"
-      className="flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5"
-    >
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-xs font-bold text-white">
-        ✓
-      </span>
-      <p className="text-sm font-medium text-emerald-800">{message}</p>
-    </div>
-  );
 }
 
 export function CustomerNoteView({ session }: CustomerNoteViewProps) {
@@ -109,11 +95,7 @@ export function CustomerNoteView({ session }: CustomerNoteViewProps) {
       setCustomerName('');
       setTags([]);
       setMemo('');
-      setSavedMsg(
-        customerNoteApi.usesDb
-          ? `✓ ${note.customerName} 님 DB 저장됨`
-          : `✓ ${note.customerName} 님 저장됨`,
-      );
+      setSavedMsg(`✓ ${note.customerName} 님 저장됨`);
       setTimeout(() => setSavedMsg(''), 4000);
     } catch (e) {
       alert(e instanceof Error ? e.message : '저장 실패');
@@ -139,17 +121,6 @@ export function CustomerNoteView({ session }: CustomerNoteViewProps) {
     else if (result === 'downloaded') setShareMsg('✓ 파일 저장됨 — 카톡으로 이 파일을 보내주세요');
     else setShareMsg('');
     setTimeout(() => setShareMsg(''), 5000);
-  };
-
-  const copyCode = async () => {
-    if (myNotes.length === 0) return;
-    try {
-      await copyShareCode(myNotes);
-      setShareMsg('✓ 전송 코드 복사됨 — 카톡에 붙여넣기');
-      setTimeout(() => setShareMsg(''), 5000);
-    } catch {
-      setShareMsg('복사 실패 — 노트 보내기를 이용해주세요');
-    }
   };
 
   const saveEdit = async (patch: {
@@ -184,12 +155,8 @@ export function CustomerNoteView({ session }: CustomerNoteViewProps) {
 
   return (
     <div className="mx-auto max-w-lg space-y-4 pb-6">
-      {customerNoteApi.usesDb && (
-        <p className="text-center text-xs text-sky-600">☁ DB에 자동 저장</p>
-      )}
-
       {/* 1. 날짜 */}
-      <section className="rounded-2xl bg-white p-4 shadow-sm">
+      <section className={CARD}>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-bold text-slate-800">① 상담 날짜</h2>
           <button
@@ -259,7 +226,7 @@ export function CustomerNoteView({ session }: CustomerNoteViewProps) {
       </section>
 
       {/* 2. 고객명 */}
-      <section className="rounded-2xl bg-white p-4 shadow-sm">
+      <section className={CARD}>
         <h2 className="mb-2 text-sm font-bold text-slate-800">② 고객명</h2>
         <input
           type="text"
@@ -271,14 +238,14 @@ export function CustomerNoteView({ session }: CustomerNoteViewProps) {
       </section>
 
       {/* 3. 태그 */}
-      <section className="rounded-2xl bg-white p-4 shadow-sm">
+      <section className={CARD}>
         <h2 className="mb-1 text-sm font-bold text-slate-800">③ 태그 선택</h2>
         <p className="mb-3 text-xs text-slate-400">층별로 여러 개 선택 가능 · 통계·검색용</p>
         <TagSelect tags={tags} onToggle={toggleTag} />
       </section>
 
       {/* 4. 핵심메모 */}
-      <section className="rounded-2xl bg-white p-4 shadow-sm">
+      <section className={CARD}>
         <h2 className="mb-2 text-sm font-bold text-slate-800">④ 핵심메모</h2>
         <textarea
           value={memo}
@@ -300,31 +267,26 @@ export function CustomerNoteView({ session }: CustomerNoteViewProps) {
       {savedMsg && <SaveToast message={savedMsg} />}
 
       {/* 내 작성 기록 */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-4">
+      <section className={CARD}>
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold text-slate-700">
             내 작성 기록 <span className="font-normal text-slate-500">({myNotes.length}건)</span>
           </span>
           {myNotes.length > 0 && (
             <div className="flex gap-1.5">
-              <button
-                type="button"
-                onClick={() => void sendNotes()}
-                className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white active:bg-sky-700"
-              >
-                노트 보내기
-              </button>
-              <button
-                type="button"
-                onClick={() => void copyCode()}
-                className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 active:bg-slate-50"
-              >
-                코드복사
-              </button>
+              {!usesDb && (
+                <button
+                  type="button"
+                  onClick={() => void sendNotes()}
+                  className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-700 active:bg-sky-800"
+                >
+                  노트 보내기
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => exportNotesCSV(myNotes)}
-                className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-medium text-white active:bg-slate-900"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
               >
                 CSV
               </button>
@@ -332,13 +294,13 @@ export function CustomerNoteView({ session }: CustomerNoteViewProps) {
           )}
         </div>
         {shareMsg && <p className="mt-2 text-center text-xs text-sky-600">{shareMsg}</p>}
-        {myNotes.length > 0 && !shareMsg && (
+        {myNotes.length > 0 && !shareMsg && !usesDb && (
           <p className="mt-2 text-center text-xs text-slate-400">
-            주기적으로 「노트 보내기」→ 카톡으로 관리자에게 전달
+            「노트 보내기」로 관리자에게 전달
           </p>
         )}
         {loading ? (
-          <p className="mt-3 text-center text-sm text-slate-400">기록 불러오는 중…</p>
+          <LoadingState message="기록 불러오는 중…" className="py-8" />
         ) : myNotes.length === 0 ? (
           <p className="mt-3 text-center text-sm text-slate-400">아직 작성한 기록이 없습니다</p>
         ) : (
@@ -348,7 +310,7 @@ export function CustomerNoteView({ session }: CustomerNoteViewProps) {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-xs text-slate-400">{fmtDateTime(n.createdAt)}</span>
+                      <span className="text-xs text-slate-400">{fmtDateTimeShort(n.createdAt)}</span>
                       <span className="text-xs text-slate-400">
                         상담 {n.date.slice(5).replace('-', '/')}
                       </span>
@@ -359,14 +321,14 @@ export function CustomerNoteView({ session }: CustomerNoteViewProps) {
                     <button
                       type="button"
                       onClick={() => setEditNote(n)}
-                      className="rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-600 active:bg-sky-100"
+                        className="rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-600 hover:bg-sky-100"
                     >
                       수정
                     </button>
                     <button
                       type="button"
                       onClick={() => removeNote(n.id, n.customerName)}
-                      className="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-600 active:bg-rose-100"
+                        className="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-600 hover:bg-rose-100"
                     >
                       삭제
                     </button>

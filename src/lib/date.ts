@@ -8,6 +8,18 @@ export const weekdayOf = (y: number, m: number, d: number) => new Date(y, m - 1,
 
 export const WD_KR = ['일', '월', '화', '수', '목', '금', '토'];
 
+/** 06/13 09:36 */
+export function fmtDateTimeShort(iso: string) {
+  const d = new Date(iso);
+  return `${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** 2026.06.13 09:36 */
+export function fmtDateTimeLong(iso: string) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function monthsFrom(date: Date, n: number) {
   const arr: { y: number; m: number }[] = [];
   let y = date.getFullYear();

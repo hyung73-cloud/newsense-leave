@@ -1,15 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { formatTagLabel } from '../data/customerTags';
 import { customerNoteApi } from '../lib/customerNoteApi';
+import { usesDb } from '../lib/db';
 import { exportNotesCSV } from '../lib/customerNoteStore';
-import { pad } from '../lib/date';
+import { fmtDateTimeLong } from '../lib/date';
 import { parseShareInput } from '../lib/noteTransfer';
 import type { CustomerNote } from '../types';
-
-function fmtDateTime(iso: string) {
-  const d = new Date(iso);
-  return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
+import { LoadingState } from './ui/LoadingState';
 
 export function AdminNotesPanel() {
   const [notes, setNotes] = useState<CustomerNote[]>([]);
@@ -85,24 +82,21 @@ export function AdminNotesPanel() {
           <span className="text-sm font-normal text-slate-500">
             ({loading ? '…' : `${notes.length}건`})
           </span>
-          {customerNoteApi.usesDb && (
-            <span className="ml-1 text-xs font-normal text-sky-600">☁ DB 연동</span>
-          )}
         </h2>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => setImportOpen((v) => !v)}
-            className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700 hover:bg-sky-100"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
           >
-            직원 노트 가져오기
+            {usesDb ? '백업 가져오기' : '직원 노트 가져오기'}
           </button>
           {notes.length > 0 && (
             <>
               <button
                 type="button"
                 onClick={() => exportNotesCSV(notes)}
-                className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+                className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
               >
                 CSV
               </button>
@@ -119,15 +113,17 @@ export function AdminNotesPanel() {
       </div>
 
       {importOpen && (
-        <div className="rounded-2xl border border-sky-100 bg-sky-50/50 p-4">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <p className="text-sm text-slate-600">
-            직원이 폰에서 보낸 <strong>.json 파일</strong>을 선택하거나 내용을 붙여넣으세요.
+            {usesDb
+              ? '예전에 받아 둔 .json 백업 파일을 합칩니다. 중복은 자동 제외됩니다.'
+              : '직원이 보낸 .json 파일을 선택하거나 내용을 붙여넣으세요.'}
           </p>
           <input
             ref={fileRef}
             type="file"
             accept=".json,application/json,text/plain"
-            className="mt-3 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-white file:px-3 file:py-2 file:text-sm file:font-medium file:text-sky-700"
+            className="mt-3 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-white file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700"
             onChange={(e) => onFile(e.target.files?.[0])}
           />
           <textarea
@@ -142,7 +138,7 @@ export function AdminNotesPanel() {
               type="button"
               onClick={() => void doImport(pasteText)}
               disabled={!pasteText.trim()}
-              className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-40"
+              className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900 disabled:opacity-40"
             >
               합치기
             </button>
@@ -152,12 +148,12 @@ export function AdminNotesPanel() {
       )}
 
       {loading ? (
-        <p className="py-12 text-center text-sm text-slate-400">기록 불러오는 중…</p>
+        <LoadingState message="기록 불러오는 중…" className="py-12" />
       ) : notes.length === 0 ? (
         <p className="py-12 text-center text-sm text-slate-400">
-          {customerNoteApi.usesDb
+          {usesDb
             ? '기록이 없습니다. 직원이 고객노트를 저장하면 여기에 표시됩니다.'
-            : '기록이 없습니다. 직원 폰에서 「노트 보내기」로 받은 파일을 가져오세요.'}
+            : '기록이 없습니다. 「직원 노트 가져오기」로 받은 파일을 합쳐주세요.'}
         </p>
       ) : (
         <ul className="max-h-[70vh] space-y-2 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
@@ -166,7 +162,9 @@ export function AdminNotesPanel() {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-medium text-slate-400">{fmtDateTime(n.createdAt)}</span>
+                    <span className="text-xs font-medium text-slate-400">
+                      {fmtDateTimeLong(n.createdAt)}
+                    </span>
                     <span className="rounded bg-white px-1.5 py-0.5 text-xs text-slate-500">
                       상담 {n.date.slice(5).replace('-', '/')}
                     </span>
@@ -179,7 +177,7 @@ export function AdminNotesPanel() {
                 <button
                   type="button"
                   onClick={() => removeNote(n.id, n.customerName)}
-                  className="shrink-0 rounded-lg border border-rose-200 bg-white px-2.5 py-1 text-xs font-medium text-rose-600 active:bg-rose-50"
+                  className="shrink-0 rounded-lg border border-rose-200 bg-white px-2.5 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50"
                 >
                   삭제
                 </button>
@@ -189,7 +187,7 @@ export function AdminNotesPanel() {
                   {n.tags.map((t) => (
                     <span
                       key={t}
-                      className="rounded-full bg-white px-2 py-0.5 text-xs text-slate-600 ring-1 ring-slate-200"
+                      className="rounded-full bg-[#FEE500]/60 px-2 py-0.5 text-xs text-slate-700"
                     >
                       {formatTagLabel(t)}
                     </span>
