@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { CUSTOMER_TAGS } from '../data/customerTags';
+import { formatTagLabel } from '../data/customerTags';
 import { daysInMonth, pad, weekdayOf, WD_KR, ymd } from '../lib/date';
 import { customerNoteStore, exportNotesCSV } from '../lib/customerNoteStore';
 import { copyShareCode, shareNotesFile } from '../lib/noteTransfer';
 import type { NoteSession } from '../lib/noteSession';
 import type { CustomerNote } from '../types';
 import { NoteEditModal } from './NoteEditModal';
+import { TagSelect } from './TagSelect';
 
 function fmtDateTime(iso: string) {
   const d = new Date(iso);
@@ -67,7 +68,7 @@ export function CustomerNoteView({ session }: CustomerNoteViewProps) {
     }
 
     const note: CustomerNote = {
-      id: 'n' + Date.now(),
+      id: crypto.randomUUID(),
       date,
       customerName: customerName.trim(),
       tags: [...tags],
@@ -122,7 +123,12 @@ export function CustomerNoteView({ session }: CustomerNoteViewProps) {
     }
   };
 
-  const saveEdit = (patch: { date: string; customerName: string; tags: string[]; memo: string }) => {
+  const saveEdit = (patch: {
+    date: string;
+    customerName: string;
+    tags: string[];
+    memo: string;
+  }) => {
     if (!editNote) return;
     const next = customerNoteStore.update(editNote.id, patch);
     setNotes(next);
@@ -224,26 +230,8 @@ export function CustomerNoteView({ session }: CustomerNoteViewProps) {
       {/* 3. 태그 */}
       <section className="rounded-2xl bg-white p-4 shadow-sm">
         <h2 className="mb-1 text-sm font-bold text-slate-800">③ 태그 선택</h2>
-        <p className="mb-3 text-xs text-slate-400">여러 개 선택 가능 · 통계·검색용</p>
-        <div className="flex flex-wrap gap-2">
-          {CUSTOMER_TAGS.map((tag) => {
-            const on = tags.includes(tag);
-            return (
-              <button
-                key={tag}
-                type="button"
-                onClick={() => toggleTag(tag)}
-                className={`rounded-full px-4 py-2.5 text-sm font-medium transition active:scale-95 ${
-                  on
-                    ? 'bg-[#FEE500] text-[#3B1E1E] shadow-sm'
-                    : 'bg-slate-100 text-slate-600 active:bg-slate-200'
-                }`}
-              >
-                {tag}
-              </button>
-            );
-          })}
-        </div>
+        <p className="mb-3 text-xs text-slate-400">층별로 여러 개 선택 가능 · 통계·검색용</p>
+        <TagSelect tags={tags} onToggle={toggleTag} />
       </section>
 
       {/* 4. 핵심메모 */}
@@ -336,7 +324,7 @@ export function CustomerNoteView({ session }: CustomerNoteViewProps) {
                         key={t}
                         className="rounded-full bg-[#FEE500]/60 px-2 py-0.5 text-xs text-slate-700"
                       >
-                        {t}
+                        {formatTagLabel(t)}
                       </span>
                     ))}
                   </div>

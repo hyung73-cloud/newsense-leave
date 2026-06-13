@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { formatTagLabel } from '../data/customerTags';
 import { customerNoteStore, exportNotesCSV } from '../lib/customerNoteStore';
 import { pad } from '../lib/date';
 import { parseShareInput } from '../lib/noteTransfer';
@@ -15,6 +16,8 @@ export function AdminNotesPanel() {
   const [importMsg, setImportMsg] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const refresh = () => setNotes(customerNoteStore.sortByNewest(customerNoteStore.load()));
+
   const doImport = (raw: string) => {
     try {
       const incoming = parseShareInput(raw);
@@ -23,7 +26,7 @@ export function AdminNotesPanel() {
         return;
       }
       const { added, skipped } = customerNoteStore.mergeImport(incoming);
-      setNotes(customerNoteStore.sortByNewest(customerNoteStore.load()));
+      refresh();
       setImportMsg(`✓ ${added}건 추가${skipped ? ` · ${skipped}건 중복 제외` : ''}`);
       setPasteText('');
       if (fileRef.current) fileRef.current.value = '';
@@ -69,8 +72,7 @@ export function AdminNotesPanel() {
       {importOpen && (
         <div className="rounded-2xl border border-sky-100 bg-sky-50/50 p-4">
           <p className="text-sm text-slate-600">
-            직원이 폰에서 보낸 <strong>.json 파일</strong>을 선택하거나, 카톡에 붙여넣은 내용을 아래에
-            붙여넣으세요. 중복 기록은 자동으로 제외됩니다.
+            직원이 폰에서 보낸 <strong>.json 파일</strong>을 선택하거나 내용을 붙여넣으세요.
           </p>
           <input
             ref={fileRef}
@@ -82,7 +84,7 @@ export function AdminNotesPanel() {
           <textarea
             value={pasteText}
             onChange={(e) => setPasteText(e.target.value)}
-            placeholder="JSON 파일 내용 또는 전송 코드 붙여넣기"
+            placeholder="JSON 파일 내용 붙여넣기"
             rows={3}
             className="mt-3 w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"
           />
@@ -125,7 +127,7 @@ export function AdminNotesPanel() {
                       key={t}
                       className="rounded-full bg-white px-2 py-0.5 text-xs text-slate-600 ring-1 ring-slate-200"
                     >
-                      {t}
+                      {formatTagLabel(t)}
                     </span>
                   ))}
                 </div>

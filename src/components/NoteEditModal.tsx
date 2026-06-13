@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { CUSTOMER_TAGS } from '../data/customerTags';
 import type { CustomerNote } from '../types';
+import { TagSelect } from './TagSelect';
 
 interface NoteEditModalProps {
   note: CustomerNote;
@@ -58,22 +58,7 @@ export function NoteEditModal({ note, onClose, onSave }: NoteEditModalProps) {
           </div>
           <div>
             <label className="mb-1 block text-xs text-slate-500">태그</label>
-            <div className="flex flex-wrap gap-1.5">
-              {CUSTOMER_TAGS.map((tag) => (
-                <button
-                  key={tag}
-                  type="button"
-                  onClick={() => toggleTag(tag)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium ${
-                    tags.includes(tag)
-                      ? 'bg-[#FEE500] text-[#3B1E1E]'
-                      : 'bg-slate-100 text-slate-600'
-                  }`}
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
+            <TagSelect tags={tags} onToggle={toggleTag} size="sm" />
           </div>
           <div>
             <label className="mb-1 block text-xs text-slate-500">핵심메모</label>
