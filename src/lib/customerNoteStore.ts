@@ -27,6 +27,15 @@ export const customerNoteStore = {
     this.save(notes);
     return notes;
   },
+  remove(id: string) {
+    const notes = this.load().filter((n) => n.id !== id);
+    this.save(notes);
+    return notes;
+  },
+  clear() {
+    this.save([]);
+    return [];
+  },
   sortByNewest(notes: CustomerNote[]) {
     return [...notes].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   },

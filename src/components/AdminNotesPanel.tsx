@@ -18,6 +18,20 @@ export function AdminNotesPanel() {
 
   const refresh = () => setNotes(customerNoteStore.sortByNewest(customerNoteStore.load()));
 
+  const removeNote = (id: string, customerName: string) => {
+    if (!confirm(`「${customerName}」 기록을 삭제할까요?`)) return;
+    const next = customerNoteStore.remove(id);
+    setNotes(customerNoteStore.sortByNewest(next));
+  };
+
+  const clearAll = () => {
+    if (notes.length === 0) return;
+    if (!confirm(`전체 ${notes.length}건을 모두 삭제할까요?\n삭제 후에는 복구할 수 없습니다.`)) return;
+    if (!confirm('정말 전체 삭제하시겠습니까?')) return;
+    customerNoteStore.clear();
+    setNotes([]);
+  };
+
   const doImport = (raw: string) => {
     try {
       const incoming = parseShareInput(raw);
@@ -58,13 +72,22 @@ export function AdminNotesPanel() {
             직원 노트 가져오기
           </button>
           {notes.length > 0 && (
-            <button
-              type="button"
-              onClick={() => exportNotesCSV(notes)}
-              className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700"
-            >
-              CSV
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => exportNotesCSV(notes)}
+                className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+              >
+                CSV
+              </button>
+              <button
+                type="button"
+                onClick={clearAll}
+                className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-100"
+              >
+                전체 삭제
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -110,15 +133,26 @@ export function AdminNotesPanel() {
         <ul className="max-h-[70vh] space-y-2 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
           {notes.map((n) => (
             <li key={n.id} className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-sm">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-medium text-slate-400">{fmtDateTime(n.createdAt)}</span>
-                <span className="rounded bg-white px-1.5 py-0.5 text-xs text-slate-500">
-                  상담 {n.date.slice(5).replace('-', '/')}
-                </span>
-                <span className="font-bold text-slate-800">{n.customerName}</span>
-                <span className="rounded-full bg-[#FEE500]/70 px-2 py-0.5 text-xs font-medium text-[#3B1E1E]">
-                  {n.authorName}
-                </span>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-medium text-slate-400">{fmtDateTime(n.createdAt)}</span>
+                    <span className="rounded bg-white px-1.5 py-0.5 text-xs text-slate-500">
+                      상담 {n.date.slice(5).replace('-', '/')}
+                    </span>
+                    <span className="font-bold text-slate-800">{n.customerName}</span>
+                    <span className="rounded-full bg-[#FEE500]/70 px-2 py-0.5 text-xs font-medium text-[#3B1E1E]">
+                      {n.authorName}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeNote(n.id, n.customerName)}
+                  className="shrink-0 rounded-lg border border-rose-200 bg-white px-2.5 py-1 text-xs font-medium text-rose-600 active:bg-rose-50"
+                >
+                  삭제
+                </button>
               </div>
               {n.tags.length > 0 && (
                 <div className="mt-1.5 flex flex-wrap gap-1">

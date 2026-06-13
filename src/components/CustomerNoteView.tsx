@@ -137,6 +137,14 @@ export function CustomerNoteView({ session }: CustomerNoteViewProps) {
     setTimeout(() => setSavedMsg(''), 2000);
   };
 
+  const removeNote = (id: string, customerName: string) => {
+    if (!confirm(`「${customerName}」 기록을 삭제할까요?`)) return;
+    const next = customerNoteStore.remove(id);
+    setNotes(next);
+    setSavedMsg('✓ 삭제됨');
+    setTimeout(() => setSavedMsg(''), 2000);
+  };
+
   return (
     <div className="mx-auto max-w-lg space-y-4 pb-6">
       {savedMsg && (
@@ -309,13 +317,22 @@ export function CustomerNoteView({ session }: CustomerNoteViewProps) {
                     </div>
                     <div className="mt-0.5 font-bold text-slate-800">{n.customerName}</div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setEditNote(n)}
-                    className="shrink-0 rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-600 active:bg-sky-100"
-                  >
-                    수정
-                  </button>
+                  <div className="flex shrink-0 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setEditNote(n)}
+                      className="rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-600 active:bg-sky-100"
+                    >
+                      수정
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeNote(n.id, n.customerName)}
+                      className="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-600 active:bg-rose-100"
+                    >
+                      삭제
+                    </button>
+                  </div>
                 </div>
                 {n.tags.length > 0 && (
                   <div className="mt-1 flex flex-wrap gap-1">
