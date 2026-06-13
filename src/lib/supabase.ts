@@ -6,6 +6,7 @@ function sanitizeAscii(value: string): string {
     .replace(/^\uFEFF/, '')
     .replace(/[\r\n\t]/g, '')
     .trim()
+    .replace(/^["']|["']$/g, '')
     .replace(/[^\x20-\x7E]/g, '');
 }
 
