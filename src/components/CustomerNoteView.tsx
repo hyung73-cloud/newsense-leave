@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { formatTagLabel } from '../data/customerTags';
+import { customerNoteApi } from '../lib/customerNoteApi';
 import { daysInMonth, pad, weekdayOf, WD_KR, ymd } from '../lib/date';
-import { customerNoteStore, exportNotesCSV } from '../lib/customerNoteStore';
+import { exportNotesCSV } from '../lib/customerNoteStore';
 import { copyShareCode, shareNotesFile } from '../lib/noteTransfer';
 import type { NoteSession } from '../lib/noteSession';
 import type { CustomerNote } from '../types';
@@ -22,12 +23,27 @@ function todayStr() {
   return ymd(d.getFullYear(), d.getMonth() + 1, d.getDate());
 }
 
+function SaveToast({ message }: { message: string }) {
+  return (
+    <div
+      role="status"
+      className="flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5"
+    >
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-xs font-bold text-white">
+        ✓
+      </span>
+      <p className="text-sm font-medium text-emerald-800">{message}</p>
+    </div>
+  );
+}
+
 export function CustomerNoteView({ session }: CustomerNoteViewProps) {
   const [date, setDate] = useState(todayStr);
   const [customerName, setCustomerName] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [memo, setMemo] = useState('');
-  const [notes, setNotes] = useState<CustomerNote[]>(() => customerNoteStore.load());
+  const [notes, setNotes] = useState<CustomerNote[]>([]);
+  const [loading, setLoading] = useState(true);
   const [savedMsg, setSavedMsg] = useState('');
   const [editNote, setEditNote] = useState<CustomerNote | null>(null);
   const [shareMsg, setShareMsg] = useState('');
@@ -53,11 +69,19 @@ export function CustomerNoteView({ session }: CustomerNoteViewProps) {
 
   const today = todayStr();
 
+  useEffect(() => {
+    void customerNoteApi
+      .loadAll()
+      .then(setNotes)
+      .catch((e) => alert(e instanceof Error ? e.message : '기록 불러오기 실패'))
+      .finally(() => setLoading(false));
+  }, []);
+
   const toggleTag = (tag: string) => {
     setTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
   };
 
-  const save = () => {
+  const save = async () => {
     if (!customerName.trim()) {
       alert('고객명을 입력해주세요.');
       return;
@@ -79,13 +103,21 @@ export function CustomerNoteView({ session }: CustomerNoteViewProps) {
       createdAt: new Date().toISOString(),
     };
 
-    const next = customerNoteStore.add(note);
-    setNotes(next);
-    setCustomerName('');
-    setTags([]);
-    setMemo('');
-    setSavedMsg(`✓ ${note.customerName} 님 저장됨`);
-    setTimeout(() => setSavedMsg(''), 2500);
+    try {
+      const next = await customerNoteApi.add(note);
+      setNotes(next);
+      setCustomerName('');
+      setTags([]);
+      setMemo('');
+      setSavedMsg(
+        customerNoteApi.usesDb
+          ? `✓ ${note.customerName} 님 DB 저장됨`
+          : `✓ ${note.customerName} 님 저장됨`,
+      );
+      setTimeout(() => setSavedMsg(''), 4000);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '저장 실패');
+    }
   };
 
   const total = daysInMonth(cal.y, cal.m);
@@ -95,10 +127,7 @@ export function CustomerNoteView({ session }: CustomerNoteViewProps) {
   for (let d = 1; d <= total; d++) cells.push(d);
 
   const myNotes = useMemo(
-    () =>
-      customerNoteStore.sortByNewest(
-        notes.filter((n) => n.authorId === session.employeeId),
-      ),
+    () => notes.filter((n) => n.authorId === session.employeeId).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [notes, session.employeeId],
   );
 
@@ -123,34 +152,40 @@ export function CustomerNoteView({ session }: CustomerNoteViewProps) {
     }
   };
 
-  const saveEdit = (patch: {
+  const saveEdit = async (patch: {
     date: string;
     customerName: string;
     tags: string[];
     memo: string;
   }) => {
     if (!editNote) return;
-    const next = customerNoteStore.update(editNote.id, patch);
-    setNotes(next);
-    setEditNote(null);
-    setSavedMsg('✓ 수정됨');
-    setTimeout(() => setSavedMsg(''), 2000);
+    try {
+      const next = await customerNoteApi.update(editNote.id, patch);
+      setNotes(next);
+      setEditNote(null);
+      setSavedMsg('✓ 수정됨');
+      setTimeout(() => setSavedMsg(''), 2000);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '수정 실패');
+    }
   };
 
-  const removeNote = (id: string, customerName: string) => {
+  const removeNote = async (id: string, customerName: string) => {
     if (!confirm(`「${customerName}」 기록을 삭제할까요?`)) return;
-    const next = customerNoteStore.remove(id);
-    setNotes(next);
-    setSavedMsg('✓ 삭제됨');
-    setTimeout(() => setSavedMsg(''), 2000);
+    try {
+      const next = await customerNoteApi.remove(id);
+      setNotes(next);
+      setSavedMsg('✓ 삭제됨');
+      setTimeout(() => setSavedMsg(''), 2000);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '삭제 실패');
+    }
   };
 
   return (
     <div className="mx-auto max-w-lg space-y-4 pb-6">
-      {savedMsg && (
-        <div className="rounded-2xl bg-[#FEE500] px-4 py-3 text-center text-sm font-bold text-[#3B1E1E] shadow-sm">
-          {savedMsg}
-        </div>
+      {customerNoteApi.usesDb && (
+        <p className="text-center text-xs text-sky-600">☁ DB에 자동 저장</p>
       )}
 
       {/* 1. 날짜 */}
@@ -257,11 +292,12 @@ export function CustomerNoteView({ session }: CustomerNoteViewProps) {
       {/* 5. 저장 */}
       <button
         type="button"
-        onClick={save}
+        onClick={() => void save()}
         className="w-full rounded-2xl bg-[#FEE500] py-4 text-lg font-bold text-[#3B1E1E] shadow-md transition active:scale-[0.98] active:bg-[#F5DC00]"
       >
         저장
       </button>
+      {savedMsg && <SaveToast message={savedMsg} />}
 
       {/* 내 작성 기록 */}
       <section className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -301,7 +337,9 @@ export function CustomerNoteView({ session }: CustomerNoteViewProps) {
             주기적으로 「노트 보내기」→ 카톡으로 관리자에게 전달
           </p>
         )}
-        {myNotes.length === 0 ? (
+        {loading ? (
+          <p className="mt-3 text-center text-sm text-slate-400">기록 불러오는 중…</p>
+        ) : myNotes.length === 0 ? (
           <p className="mt-3 text-center text-sm text-slate-400">아직 작성한 기록이 없습니다</p>
         ) : (
           <ul className="mt-3 max-h-[50vh] space-y-2 overflow-y-auto border-t border-slate-100 pt-3">

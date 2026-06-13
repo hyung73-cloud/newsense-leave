@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AdminBalance } from './components/AdminBalance';
 import { AdminPinPanel } from './components/AdminPinPanel';
 import { AdminCalendar } from './components/AdminCalendar';
@@ -9,8 +9,8 @@ import { NotePinAuth } from './components/NotePinAuth';
 import { PinLoginScreen } from './components/PinLoginScreen';
 import { StaffView } from './components/StaffView';
 import { hardRefresh as doHardRefresh } from './lib/hardRefresh';
+import { leaveApi } from './lib/leaveApi';
 import { noteSession, type NoteSession } from './lib/noteSession';
-import { store } from './lib/store';
 import type { Employee, LeaveRequest } from './types';
 
 type AdminTab = 'balance' | 'calendar' | 'approve' | 'notes' | 'pins';
@@ -19,9 +19,9 @@ type MainSection = 'leave' | 'notes';
 const ADMIN_PASSWORD = '0876';
 
 export default function App() {
-  const initial = useMemo(() => store.load(), []);
-  const [employees, setEmployees] = useState<Employee[]>(initial.employees);
-  const [requests, setRequests] = useState<LeaveRequest[]>(initial.requests);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [requests, setRequests] = useState<LeaveRequest[]>([]);
+  const [dataReady, setDataReady] = useState(false);
   const [mainSection, setMainSection] = useState<MainSection>('notes');
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminTab, setAdminTab] = useState<AdminTab>('balance');
@@ -33,13 +33,26 @@ export default function App() {
   );
   const [refreshing, setRefreshing] = useState(false);
 
-  const dataRef = useRef({ employees: initial.employees, requests: initial.requests });
+  const dataRef = useRef({ employees: [] as Employee[], requests: [] as LeaveRequest[] });
   dataRef.current = { employees, requests };
 
-  const persist = useCallback(
-    (e: Employee[], r: LeaveRequest[]) => store.save({ employees: e, requests: r }),
-    [],
-  );
+  useEffect(() => {
+    void leaveApi
+      .load()
+      .then(({ employees: e, requests: r }) => {
+        setEmployees(e);
+        setRequests(r);
+        dataRef.current = { employees: e, requests: r };
+      })
+      .catch((err) => alert(err instanceof Error ? err.message : '데이터 불러오기 실패'))
+      .finally(() => setDataReady(true));
+  }, []);
+
+  const persist = useCallback((e: Employee[], r: LeaveRequest[]) => {
+    void leaveApi.save(e, r).catch((err) =>
+      alert(err instanceof Error ? err.message : '저장 실패'),
+    );
+  }, []);
 
   const updateRequests = (fn: (prev: LeaveRequest[]) => LeaveRequest[]) =>
     setRequests((prev) => {
@@ -204,7 +217,9 @@ export default function App() {
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-4 sm:py-5">
-        {mainSection === 'leave' ? (
+        {!dataReady ? (
+          <p className="py-16 text-center text-sm text-slate-400">데이터 불러오는 중…</p>
+        ) : mainSection === 'leave' ? (
           !isAdmin ? (
             noteSessionState ? (
               <StaffView
@@ -268,14 +283,20 @@ export default function App() {
           <PinLoginScreen employees={actives} onLogin={setNoteSessionState} />
         )}
 
+        {dataReady && (
         <footer className="mt-8 border-t border-slate-200 pt-4 text-center text-xs text-slate-400">
           <p>
             {mainSection === 'leave'
-              ? '환산: 반차 2 = 연차 1 · 시간차 4 = 반차 1 · 시간차 8 = 연차 1 · 데이터는 이 기기 브라우저에 저장됩니다'
-              : '태그 = 통계·검색용 · 메모 = 상담 기록 · 데이터는 이 기기 브라우저에 저장됩니다'}
+              ? leaveApi.usesDb
+                ? '환산: 반차 2 = 연차 1 · 시간차 4 = 반차 1 · 시간차 8 = 연차 1 · ☁ DB에 저장됩니다'
+                : '환산: 반차 2 = 연차 1 · 시간차 4 = 반차 1 · 시간차 8 = 연차 1 · 데이터는 이 기기 브라우저에 저장됩니다'
+              : leaveApi.usesDb
+                ? '태그 = 통계·검색용 · 메모 = 상담 기록 · ☁ DB에 저장됩니다'
+                : '태그 = 통계·검색용 · 메모 = 상담 기록 · 데이터는 이 기기 브라우저에 저장됩니다'}
           </p>
           <p className="mt-1 text-[10px] text-slate-300">빌드 {__APP_VERSION__}</p>
         </footer>
+        )}
       </main>
 
       {showPwModal && (

@@ -1,8 +1,10 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatTagLabel } from '../data/customerTags';
-import { customerNoteStore, exportNotesCSV } from '../lib/customerNoteStore';
+import { customerNoteApi } from '../lib/customerNoteApi';
+import { exportNotesCSV } from '../lib/customerNoteStore';
 import { pad } from '../lib/date';
 import { parseShareInput } from '../lib/noteTransfer';
+import type { CustomerNote } from '../types';
 
 function fmtDateTime(iso: string) {
   const d = new Date(iso);
@@ -10,37 +12,55 @@ function fmtDateTime(iso: string) {
 }
 
 export function AdminNotesPanel() {
-  const [notes, setNotes] = useState(() => customerNoteStore.sortByNewest(customerNoteStore.load()));
+  const [notes, setNotes] = useState<CustomerNote[]>([]);
+  const [loading, setLoading] = useState(true);
   const [importOpen, setImportOpen] = useState(false);
   const [pasteText, setPasteText] = useState('');
   const [importMsg, setImportMsg] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const refresh = () => setNotes(customerNoteStore.sortByNewest(customerNoteStore.load()));
-
-  const removeNote = (id: string, customerName: string) => {
-    if (!confirm(`「${customerName}」 기록을 삭제할까요?`)) return;
-    const next = customerNoteStore.remove(id);
-    setNotes(customerNoteStore.sortByNewest(next));
+  const refresh = async () => {
+    const next = await customerNoteApi.loadAll();
+    setNotes(next.sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
   };
 
-  const clearAll = () => {
+  useEffect(() => {
+    void refresh()
+      .catch((e) => alert(e instanceof Error ? e.message : '기록 불러오기 실패'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const removeNote = async (id: string, customerName: string) => {
+    if (!confirm(`「${customerName}」 기록을 삭제할까요?`)) return;
+    try {
+      await customerNoteApi.remove(id);
+      await refresh();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '삭제 실패');
+    }
+  };
+
+  const clearAll = async () => {
     if (notes.length === 0) return;
     if (!confirm(`전체 ${notes.length}건을 모두 삭제할까요?\n삭제 후에는 복구할 수 없습니다.`)) return;
     if (!confirm('정말 전체 삭제하시겠습니까?')) return;
-    customerNoteStore.clear();
-    setNotes([]);
+    try {
+      await customerNoteApi.clear();
+      setNotes([]);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '삭제 실패');
+    }
   };
 
-  const doImport = (raw: string) => {
+  const doImport = async (raw: string) => {
     try {
       const incoming = parseShareInput(raw);
       if (incoming.length === 0) {
         setImportMsg('가져올 기록이 없습니다.');
         return;
       }
-      const { added, skipped } = customerNoteStore.mergeImport(incoming);
-      refresh();
+      const { added, skipped } = await customerNoteApi.mergeImport(incoming);
+      await refresh();
       setImportMsg(`✓ ${added}건 추가${skipped ? ` · ${skipped}건 중복 제외` : ''}`);
       setPasteText('');
       if (fileRef.current) fileRef.current.value = '';
@@ -61,7 +81,13 @@ export function AdminNotesPanel() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-base font-semibold text-slate-800">
-          전체 환자 기록 <span className="text-sm font-normal text-slate-500">({notes.length}건)</span>
+          전체 환자 기록{' '}
+          <span className="text-sm font-normal text-slate-500">
+            ({loading ? '…' : `${notes.length}건`})
+          </span>
+          {customerNoteApi.usesDb && (
+            <span className="ml-1 text-xs font-normal text-sky-600">☁ DB 연동</span>
+          )}
         </h2>
         <div className="flex gap-2">
           <button
@@ -114,7 +140,7 @@ export function AdminNotesPanel() {
           <div className="mt-2 flex items-center gap-3">
             <button
               type="button"
-              onClick={() => doImport(pasteText)}
+              onClick={() => void doImport(pasteText)}
               disabled={!pasteText.trim()}
               className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-40"
             >
@@ -125,9 +151,13 @@ export function AdminNotesPanel() {
         </div>
       )}
 
-      {notes.length === 0 ? (
+      {loading ? (
+        <p className="py-12 text-center text-sm text-slate-400">기록 불러오는 중…</p>
+      ) : notes.length === 0 ? (
         <p className="py-12 text-center text-sm text-slate-400">
-          기록이 없습니다. 직원 폰에서 「노트 보내기」로 받은 파일을 가져오세요.
+          {customerNoteApi.usesDb
+            ? '기록이 없습니다. 직원이 고객노트를 저장하면 여기에 표시됩니다.'
+            : '기록이 없습니다. 직원 폰에서 「노트 보내기」로 받은 파일을 가져오세요.'}
         </p>
       ) : (
         <ul className="max-h-[70vh] space-y-2 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
